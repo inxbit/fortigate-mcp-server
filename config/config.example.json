@@ -14,7 +14,7 @@
         "password": "your_password",
         "api_token": "",
         "vdom": "root",
-        "verify_ssl": false,
+        "verify_ssl": true,
         "timeout": 30
       },
       "backup": {
@@ -22,7 +22,7 @@
         "port": 443,
         "api_token": "your_api_token_here",
         "vdom": "root",
-        "verify_ssl": false,
+        "verify_ssl": true,
         "timeout": 30
       }
     }
@@ -30,7 +30,8 @@
   "auth": {
     "require_auth": false,
     "api_tokens": [],
-    "allowed_origins": ["*"]
+    "allowed_hosts": [],
+    "allowed_origins": []
   },
   "logging": {
     "level": "INFO",

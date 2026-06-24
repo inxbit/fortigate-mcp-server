@@ -49,6 +49,7 @@ class AuthConfig(BaseModel):
     """
     require_auth: bool = Field(default=False, description="Whether authentication is required")
     api_tokens: List[str] = Field(default_factory=list, description="Valid API tokens")
+    allowed_hosts: List[str] = Field(default_factory=list, description="Allowed HTTP Host headers")
     allowed_origins: List[str] = Field(default_factory=list, description="CORS allowed origins (empty = no CORS)")
 
 class LoggingConfig(BaseModel):

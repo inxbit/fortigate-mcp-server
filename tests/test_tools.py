@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 from src.fortigate_mcp.tools.device import DeviceTools
 from src.fortigate_mcp.tools.firewall import FirewallTools
+from src.fortigate_mcp.tools.load_balancing import LoadBalancingTools
 from src.fortigate_mcp.tools.network import NetworkTools
 from src.fortigate_mcp.tools.routing import RoutingTools
 from src.fortigate_mcp.tools.virtual_ip import VirtualIPTools
@@ -256,6 +257,33 @@ class TestNetworkTools:
 
         assert "created" in result[0].text
         mock_fortigate_api.create_address_object.assert_called_once()
+        mock_fortigate_api.get_address_object_detail.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_address_object(self, mock_fortigate_api):
+        """Test updating an address object."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.network_tools.update_address_object(
+            "test_device",
+            "test_addr",
+            {"comment": "updated"}
+        )
+
+        assert "updated" in result[0].text
+        mock_fortigate_api.update_address_object.assert_called_once_with(
+            "test_addr", {"comment": "updated"}, vdom=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_address_object(self, mock_fortigate_api):
+        """Test deleting an address object."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.network_tools.delete_address_object("test_device", "test_addr")
+
+        assert "deleted" in result[0].text
+        mock_fortigate_api.delete_address_object.assert_called_once_with("test_addr", vdom=None)
 
     @pytest.mark.asyncio
     async def test_list_service_objects(self, mock_fortigate_api):
@@ -283,6 +311,38 @@ class TestNetworkTools:
 
         assert "created" in result[0].text
         mock_fortigate_api.create_service_object.assert_called_once()
+        service_data = mock_fortigate_api.create_service_object.call_args.args[0]
+        assert service_data["protocol"] == "TCP/UDP/SCTP"
+        assert service_data["tcp-portrange"] == "8080"
+        assert "port" not in service_data
+        assert "type" not in service_data
+        mock_fortigate_api.get_service_object_detail.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_service_object(self, mock_fortigate_api):
+        """Test updating a service object."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.network_tools.update_service_object(
+            "test_device",
+            "HTTP",
+            {"comment": "updated"}
+        )
+
+        assert "updated" in result[0].text
+        mock_fortigate_api.update_service_object.assert_called_once_with(
+            "HTTP", {"comment": "updated"}, vdom=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_service_object(self, mock_fortigate_api):
+        """Test deleting a service object."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.network_tools.delete_service_object("test_device", "HTTP")
+
+        assert "deleted" in result[0].text
+        mock_fortigate_api.delete_service_object.assert_called_once_with("HTTP", vdom=None)
 
     @pytest.mark.asyncio
     async def test_list_address_objects_device_not_found(self):
@@ -423,6 +483,9 @@ class TestVirtualIPTools:
 
         assert "created" in result[0].text
         mock_fortigate_api.create_virtual_ip.assert_called_once()
+        vip_data = mock_fortigate_api.create_virtual_ip.call_args.args[0]
+        assert vip_data["type"] == "static-nat"
+        assert vip_data["mappedip"] == [{"range": "10.0.0.1"}]
 
     @pytest.mark.asyncio
     async def test_update_virtual_ip(self, mock_fortigate_api):
@@ -485,5 +548,145 @@ class TestVirtualIPTools:
         call_args = mock_fortigate_api.create_virtual_ip.call_args
         vip_data = call_args[0][0]
         assert vip_data["portforward"] == "enable"
+        assert vip_data["mappedip"] == [{"range": "10.0.0.1"}]
         assert vip_data["extport"] == "443"
         assert vip_data["mappedport"] == "8443"
+
+
+class TestLoadBalancingTools:
+    """Load-balancing Tools tests - all async."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, fortigate_manager):
+        self.fortigate_manager = fortigate_manager
+        self.lb_tools = LoadBalancingTools(fortigate_manager)
+
+    @pytest.mark.asyncio
+    async def test_list_virtual_servers(self, mock_fortigate_api):
+        """Test listing load-balancing virtual servers."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.lb_tools.list_virtual_servers("test_device")
+
+        assert "Load-Balancing Virtual Servers" in result[0].text
+        assert "test_vs" in result[0].text
+        mock_fortigate_api.get_virtual_servers.assert_called_once_with(vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_create_virtual_server(self, mock_fortigate_api):
+        """Test creating a load-balancing virtual server."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        data = {"name": "test_vs", "extip": "1.2.3.4", "extintf": "wan1"}
+
+        result = await self.lb_tools.create_virtual_server("test_device", data)
+
+        assert "created" in result[0].text
+        mock_fortigate_api.create_virtual_server.assert_called_once_with(data, vdom=None)
+        mock_fortigate_api.get_virtual_server_detail.assert_called_once_with("test_vs", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_update_virtual_server(self, mock_fortigate_api):
+        """Test updating a load-balancing virtual server."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.lb_tools.update_virtual_server(
+            "test_device",
+            "test_vs",
+            {"ldb-method": "least-session"}
+        )
+
+        assert "updated" in result[0].text
+        mock_fortigate_api.update_virtual_server.assert_called_once_with(
+            "test_vs", {"ldb-method": "least-session"}, vdom=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_virtual_server(self, mock_fortigate_api):
+        """Test deleting a load-balancing virtual server."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.lb_tools.delete_virtual_server("test_device", "test_vs")
+
+        assert "deleted" in result[0].text
+        mock_fortigate_api.delete_virtual_server.assert_called_once_with("test_vs", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_virtual_server_status(self, mock_fortigate_api):
+        """Test getting virtual server status."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.lb_tools.get_virtual_server_status("test_device", "test_vs")
+
+        assert "runtime_status_available" in result[0].text
+        mock_fortigate_api.get_virtual_server_status.assert_called_once_with("test_vs", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_list_real_servers(self, mock_fortigate_api):
+        """Test listing real server members."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.lb_tools.list_real_servers("test_device", "test_vs")
+
+        assert "Real Server Members" in result[0].text
+        assert "10.0.0.10" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_add_real_server(self, mock_fortigate_api):
+        """Test adding a real server member."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        member = {"id": 2, "ip": "10.0.0.11", "port": 80}
+
+        result = await self.lb_tools.add_real_server("test_device", "test_vs", member)
+
+        assert "added" in result[0].text
+        update_data = mock_fortigate_api.update_virtual_server.call_args.args[1]
+        assert member in update_data["realservers"]
+
+    @pytest.mark.asyncio
+    async def test_update_real_server(self, mock_fortigate_api):
+        """Test updating a real server member."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.lb_tools.update_real_server(
+            "test_device",
+            "test_vs",
+            "1",
+            {"port": 8080}
+        )
+
+        assert "updated" in result[0].text
+        update_data = mock_fortigate_api.update_virtual_server.call_args.args[1]
+        assert update_data["realservers"][0]["port"] == 8080
+
+    @pytest.mark.asyncio
+    async def test_delete_real_server(self, mock_fortigate_api):
+        """Test deleting a real server member."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.lb_tools.delete_real_server("test_device", "test_vs", "1")
+
+        assert "deleted" in result[0].text
+        update_data = mock_fortigate_api.update_virtual_server.call_args.args[1]
+        assert update_data["realservers"] == []
+
+    @pytest.mark.asyncio
+    async def test_health_check_crud_tools(self, mock_fortigate_api):
+        """Test load-balance health check tools."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        listed = await self.lb_tools.list_health_checks("test_device")
+        created = await self.lb_tools.create_health_check(
+            "test_device",
+            {"name": "http-monitor", "type": "http", "interval": 5}
+        )
+        updated = await self.lb_tools.update_health_check(
+            "test_device",
+            "http-monitor",
+            {"interval": 10}
+        )
+        deleted = await self.lb_tools.delete_health_check("test_device", "http-monitor")
+
+        assert "http-monitor" in listed[0].text
+        assert "created" in created[0].text
+        assert "updated" in updated[0].text
+        assert "deleted" in deleted[0].text

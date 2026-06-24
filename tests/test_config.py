@@ -2,9 +2,12 @@
 Configuration model tests - validates security defaults and validation.
 """
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
+from src.fortigate_mcp.config.loader import load_config
 from src.fortigate_mcp.config.models import (
     FortiGateDeviceConfig,
     FortiGateConfig,
@@ -19,6 +22,53 @@ from src.fortigate_mcp.config.models import (
     ServiceObjectParams,
     RouteParams,
 )
+
+
+def _write_valid_config(path):
+    config = {
+        "fortigate": {
+            "devices": {
+                "fw1": {
+                    "host": "10.0.0.1",
+                    "api_token": "test-token",
+                }
+            }
+        }
+    }
+    path.write_text(json.dumps(config), encoding="utf-8")
+    return path
+
+
+class TestConfigLoader:
+    """Tests for config file path validation."""
+
+    def test_load_config_accepts_json_file(self, tmp_path):
+        config_path = _write_valid_config(tmp_path / "fortigate.config.json")
+
+        config = load_config(str(config_path))
+
+        assert "fw1" in config.fortigate.devices
+
+    def test_load_config_rejects_non_json_file(self, tmp_path):
+        config_path = _write_valid_config(tmp_path / "fortigate.config.txt")
+
+        with pytest.raises(ValueError, match=".json"):
+            load_config(str(config_path))
+
+    def test_load_config_rejects_directory(self, tmp_path):
+        config_path = tmp_path / "config.json"
+        config_path.mkdir()
+
+        with pytest.raises(ValueError, match="regular file"):
+            load_config(str(config_path))
+
+    def test_load_config_rejects_symlink(self, tmp_path):
+        target_path = _write_valid_config(tmp_path / "target.json")
+        link_path = tmp_path / "linked.json"
+        link_path.symlink_to(target_path)
+
+        with pytest.raises(ValueError, match="symbolic link"):
+            load_config(str(link_path))
 
 
 class TestFortiGateDeviceConfig:

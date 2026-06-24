@@ -12,8 +12,28 @@ and valid before the server starts operation.
 """
 import json
 import os
+from pathlib import Path
 from typing import Optional
 from .models import Config
+
+def _resolve_config_path(config_path: str) -> Path:
+    """Resolve and validate a FortiGate MCP JSON config path."""
+    config_file = Path(config_path).expanduser()
+    if config_file.suffix.lower() != ".json":
+        raise ValueError("Configuration file must use a .json extension")
+    if config_file.is_symlink():
+        raise ValueError("Configuration file must not be a symbolic link")
+
+    try:
+        resolved_file = config_file.resolve(strict=True)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+    if resolved_file.suffix.lower() != ".json":
+        raise ValueError("Configuration file must resolve to a .json file")
+    if not resolved_file.is_file():
+        raise ValueError(f"Configuration path is not a regular file: {config_path}")
+    return resolved_file
 
 def load_config(config_path: Optional[str] = None) -> Config:
     """Load and validate configuration from JSON file.
@@ -73,10 +93,11 @@ def load_config(config_path: Optional[str] = None) -> Config:
     if not config_path:
         raise ValueError("Configuration path must be provided either as parameter or FORTIGATE_MCP_CONFIG environment variable")
 
+    config_file = _resolve_config_path(config_path)
+
     # Load and parse JSON configuration file
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
+        config_data = json.loads(config_file.read_text(encoding='utf-8'))
     except FileNotFoundError:
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
     except json.JSONDecodeError as e:
@@ -145,7 +166,7 @@ def create_example_config() -> dict:
                     "password": "your_password",
                     "api_token": "",
                     "vdom": "root",
-                    "verify_ssl": False,
+                    "verify_ssl": True,
                     "timeout": 30
                 },
                 "backup": {
@@ -153,7 +174,7 @@ def create_example_config() -> dict:
                     "port": 443,
                     "api_token": "your_api_token_here",
                     "vdom": "root",
-                    "verify_ssl": False,
+                    "verify_ssl": True,
                     "timeout": 30
                 }
             }
@@ -161,7 +182,8 @@ def create_example_config() -> dict:
         "auth": {
             "require_auth": False,
             "api_tokens": [],
-            "allowed_origins": ["*"]
+            "allowed_hosts": [],
+            "allowed_origins": []
         },
         "logging": {
             "level": "INFO",

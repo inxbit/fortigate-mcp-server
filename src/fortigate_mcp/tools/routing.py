@@ -32,8 +32,24 @@ class RoutingTools(FortiGateTool):
                 route_data["device"] = device
 
             api_client = self._get_device_api(device_id)
-            await api_client.create_static_route(route_data, vdom=vdom)
-            return self._format_operation_result("create static route", device_id, True, f"Static route to {dst} created successfully")
+            api_result = await api_client.create_static_route(route_data, vdom=vdom)
+            route_id = str(api_result.get("mkey") or route_data.get("seq-num") or "new")
+            after = None
+            if route_id != "new":
+                try:
+                    after = await api_client.get_static_route_detail(route_id, vdom=vdom)
+                except Exception:
+                    after = None
+            return self._format_write_result(
+                "create static route",
+                device_id,
+                "static_route",
+                route_id,
+                vdom=vdom,
+                request_data=route_data,
+                after=after,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("create static route", device_id, e)
 
@@ -78,8 +94,20 @@ class RoutingTools(FortiGateTool):
             self._validate_required_params(route_id=route_id)
 
             api_client = self._get_device_api(device_id)
-            await api_client.update_static_route(route_id, route_data, vdom=vdom)
-            return self._format_operation_result("update static route", device_id, True, f"Static route {route_id} updated successfully")
+            before = await api_client.get_static_route_detail(route_id, vdom=vdom)
+            api_result = await api_client.update_static_route(route_id, route_data, vdom=vdom)
+            after = await api_client.get_static_route_detail(route_id, vdom=vdom)
+            return self._format_write_result(
+                "update static route",
+                device_id,
+                "static_route",
+                route_id,
+                vdom=vdom,
+                request_data=route_data,
+                before=before,
+                after=after,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("update static route", device_id, e)
 
@@ -90,8 +118,17 @@ class RoutingTools(FortiGateTool):
             self._validate_required_params(route_id=route_id)
 
             api_client = self._get_device_api(device_id)
-            await api_client.delete_static_route(route_id, vdom=vdom)
-            return self._format_operation_result("delete static route", device_id, True, f"Static route {route_id} deleted successfully")
+            before = await api_client.get_static_route_detail(route_id, vdom=vdom)
+            api_result = await api_client.delete_static_route(route_id, vdom=vdom)
+            return self._format_write_result(
+                "delete static route",
+                device_id,
+                "static_route",
+                route_id,
+                vdom=vdom,
+                before=before,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("delete static route", device_id, e)
 

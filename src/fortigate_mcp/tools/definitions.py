@@ -433,6 +433,76 @@ Returns:
 - Deletion status confirmation
 """
 
+# Load-Balancing Tool Descriptions
+LIST_VIRTUAL_SERVERS_DESC = """
+List load-balancing virtual servers configured on a FortiGate device.
+
+Returns virtual-server VIP objects and their load-balancing metadata,
+including real server members and health-check monitor references when present.
+"""
+
+GET_VIRTUAL_SERVER_DETAIL_DESC = """
+Get detailed configuration for one load-balancing virtual server.
+"""
+
+CREATE_VIRTUAL_SERVER_DESC = """
+Create a load-balancing virtual server.
+
+The virtual_server_data payload must include a name and the FortiGate VIP
+fields required by the target FortiOS version. The server forces
+type=server-load-balance.
+"""
+
+UPDATE_VIRTUAL_SERVER_DESC = """
+Update a load-balancing virtual server and return before/after metadata.
+"""
+
+DELETE_VIRTUAL_SERVER_DESC = """
+Delete a load-balancing virtual server.
+"""
+
+GET_VIRTUAL_SERVER_STATUS_DESC = """
+Inspect virtual server and member health/status where the FortiGate API exposes it.
+If runtime status is unavailable, the tool returns configuration and an explicit
+runtime_status_available=false flag.
+"""
+
+LIST_REAL_SERVERS_DESC = """
+List real server members for a load-balancing virtual server.
+"""
+
+ADD_REAL_SERVER_DESC = """
+Add a real server member to a load-balancing virtual server.
+"""
+
+UPDATE_REAL_SERVER_DESC = """
+Update a real server member on a load-balancing virtual server.
+"""
+
+DELETE_REAL_SERVER_DESC = """
+Delete a real server member from a load-balancing virtual server.
+"""
+
+LIST_LOAD_BALANCE_HEALTH_CHECKS_DESC = """
+List load-balance health checks/monitors.
+"""
+
+GET_LOAD_BALANCE_HEALTH_CHECK_DETAIL_DESC = """
+Get detailed configuration for one load-balance health check/monitor.
+"""
+
+CREATE_LOAD_BALANCE_HEALTH_CHECK_DESC = """
+Create a load-balance health check/monitor.
+"""
+
+UPDATE_LOAD_BALANCE_HEALTH_CHECK_DESC = """
+Update a load-balance health check/monitor and return before/after metadata.
+"""
+
+DELETE_LOAD_BALANCE_HEALTH_CHECK_DESC = """
+Delete a load-balance health check/monitor.
+"""
+
 # Enhanced Routing Tool Descriptions
 UPDATE_STATIC_ROUTE_DESC = """
 Update an existing static route on a FortiGate device.

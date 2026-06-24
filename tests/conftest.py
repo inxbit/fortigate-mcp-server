@@ -100,12 +100,22 @@ def mock_fortigate_api():
     mock_api.get_address_objects = AsyncMock(return_value={
         "results": [{"name": "test_addr", "subnet": "192.168.1.0/24"}]
     })
+    mock_api.get_address_object_detail = AsyncMock(return_value={
+        "results": {"name": "test_addr", "subnet": "192.168.1.0/24"}
+    })
     mock_api.create_address_object = AsyncMock(return_value={"status": "success"})
+    mock_api.update_address_object = AsyncMock(return_value={"status": "success"})
+    mock_api.delete_address_object = AsyncMock(return_value={"status": "success"})
 
     mock_api.get_service_objects = AsyncMock(return_value={
         "results": [{"name": "HTTP", "tcp-portrange": "80"}]
     })
+    mock_api.get_service_object_detail = AsyncMock(return_value={
+        "results": {"name": "HTTP", "tcp-portrange": "80"}
+    })
     mock_api.create_service_object = AsyncMock(return_value={"status": "success"})
+    mock_api.update_service_object = AsyncMock(return_value={"status": "success"})
+    mock_api.delete_service_object = AsyncMock(return_value={"status": "success"})
 
     mock_api.get_static_routes = AsyncMock(return_value={
         "results": [{"dst": "10.0.0.0/8", "gateway": "192.168.1.1"}]
@@ -130,6 +140,42 @@ def mock_fortigate_api():
     mock_api.get_virtual_ip_detail = AsyncMock(return_value={
         "results": {"name": "test_vip", "extip": "1.2.3.4", "mappedip": "10.0.0.1"}
     })
+    mock_api.get_virtual_servers = AsyncMock(return_value={
+        "results": [
+            {
+                "name": "test_vs",
+                "type": "server-load-balance",
+                "extip": "1.2.3.4",
+                "server-type": "http",
+                "monitor": ["http-monitor"],
+                "realservers": [{"id": 1, "ip": "10.0.0.10", "port": 80}]
+            }
+        ]
+    })
+    mock_api.get_virtual_server_detail = AsyncMock(return_value={
+        "results": {
+            "name": "test_vs",
+            "type": "server-load-balance",
+            "monitor": ["http-monitor"],
+            "realservers": [{"id": 1, "ip": "10.0.0.10", "port": 80}]
+        }
+    })
+    mock_api.create_virtual_server = AsyncMock(return_value={"status": "success"})
+    mock_api.update_virtual_server = AsyncMock(return_value={"status": "success"})
+    mock_api.delete_virtual_server = AsyncMock(return_value={"status": "success"})
+    mock_api.get_virtual_server_status = AsyncMock(return_value={
+        "runtime_status_available": True,
+        "results": {"name": "test_vs", "status": "up"}
+    })
+    mock_api.get_load_balance_health_checks = AsyncMock(return_value={
+        "results": [{"name": "http-monitor", "type": "http", "interval": 5}]
+    })
+    mock_api.get_load_balance_health_check_detail = AsyncMock(return_value={
+        "results": {"name": "http-monitor", "type": "http", "interval": 5}
+    })
+    mock_api.create_load_balance_health_check = AsyncMock(return_value={"status": "success"})
+    mock_api.update_load_balance_health_check = AsyncMock(return_value={"status": "success"})
+    mock_api.delete_load_balance_health_check = AsyncMock(return_value={"status": "success"})
 
     return mock_api
 

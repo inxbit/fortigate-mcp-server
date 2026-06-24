@@ -6,6 +6,11 @@ from .base import FortiGateTool
 class VirtualIPTools(FortiGateTool):
     """Tools for FortiGate Virtual IP management."""
 
+    @staticmethod
+    def _mappedip_payload(mappedip: str) -> List[Dict[str, str]]:
+        """Build FortiOS VIP mappedip payload from a single IP or range."""
+        return [{"range": mappedip}]
+
     async def list_virtual_ips(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
         """List virtual IPs."""
         try:
@@ -27,8 +32,9 @@ class VirtualIPTools(FortiGateTool):
 
             vip_data = {
                 "name": name,
+                "type": "static-nat",
                 "extip": extip,
-                "mappedip": mappedip,
+                "mappedip": self._mappedip_payload(mappedip),
                 "extintf": extintf,
                 "portforward": portforward
             }
@@ -43,8 +49,18 @@ class VirtualIPTools(FortiGateTool):
                 vip_data["mappedport"] = mappedport
 
             api_client = self._get_device_api(device_id)
-            await api_client.create_virtual_ip(vip_data, vdom=vdom)
-            return self._format_operation_result("create virtual IP", device_id, True, f"Virtual IP '{name}' created successfully")
+            api_result = await api_client.create_virtual_ip(vip_data, vdom=vdom)
+            after = await api_client.get_virtual_ip_detail(name, vdom=vdom)
+            return self._format_write_result(
+                "create virtual IP",
+                device_id,
+                "virtual_ip",
+                name,
+                vdom=vdom,
+                request_data=vip_data,
+                after=after,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("create virtual IP", device_id, e)
 
@@ -56,8 +72,20 @@ class VirtualIPTools(FortiGateTool):
             self._validate_required_params(name=name)
 
             api_client = self._get_device_api(device_id)
-            await api_client.update_virtual_ip(name, vip_data, vdom=vdom)
-            return self._format_operation_result("update virtual IP", device_id, True, f"Virtual IP '{name}' updated successfully")
+            before = await api_client.get_virtual_ip_detail(name, vdom=vdom)
+            api_result = await api_client.update_virtual_ip(name, vip_data, vdom=vdom)
+            after = await api_client.get_virtual_ip_detail(name, vdom=vdom)
+            return self._format_write_result(
+                "update virtual IP",
+                device_id,
+                "virtual_ip",
+                name,
+                vdom=vdom,
+                request_data=vip_data,
+                before=before,
+                after=after,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("update virtual IP", device_id, e)
 
@@ -80,7 +108,16 @@ class VirtualIPTools(FortiGateTool):
             self._validate_required_params(name=name)
 
             api_client = self._get_device_api(device_id)
-            await api_client.delete_virtual_ip(name, vdom=vdom)
-            return self._format_operation_result("delete virtual IP", device_id, True, f"Virtual IP '{name}' deleted successfully")
+            before = await api_client.get_virtual_ip_detail(name, vdom=vdom)
+            api_result = await api_client.delete_virtual_ip(name, vdom=vdom)
+            return self._format_write_result(
+                "delete virtual IP",
+                device_id,
+                "virtual_ip",
+                name,
+                vdom=vdom,
+                before=before,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("delete virtual IP", device_id, e)

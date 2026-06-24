@@ -119,6 +119,23 @@ class FortiGateTool:
             return FortiGateFormatters.format_virtual_ips(data)
         elif resource_type == "virtual_ip_detail":
             return FortiGateFormatters.format_virtual_ip_detail(data)
+        elif resource_type in {
+            "virtual_servers",
+            "virtual_server_detail",
+            "virtual_server_status",
+            "real_servers",
+            "load_balance_health_checks",
+            "load_balance_health_check_detail",
+        }:
+            titles = {
+                "virtual_servers": "Load-Balancing Virtual Servers",
+                "virtual_server_detail": "Load-Balancing Virtual Server Detail",
+                "virtual_server_status": "Load-Balancing Virtual Server Status",
+                "real_servers": "Real Server Members",
+                "load_balance_health_checks": "Load-Balance Health Checks",
+                "load_balance_health_check_detail": "Load-Balance Health Check Detail",
+            }
+            return FortiGateFormatters.format_json_response(data, titles[resource_type])
         elif resource_type == "interface_status":
             return FortiGateFormatters.format_json_response(data, "Interface Status")
         elif resource_type == "static_route_detail":
@@ -238,6 +255,42 @@ class FortiGateTool:
         return FortiGateFormatters.format_operation_result(
             operation, device_id, success, details, error
         )
+
+    def _format_write_result(
+        self,
+        operation: str,
+        device_id: str,
+        target_type: str,
+        target_id: str,
+        *,
+        vdom: Optional[str] = None,
+        request_data: Optional[Dict[str, Any]] = None,
+        before: Optional[Dict[str, Any]] = None,
+        after: Optional[Dict[str, Any]] = None,
+        api_result: Optional[Dict[str, Any]] = None,
+    ) -> List[Content]:
+        """Format a successful write with enough metadata for auditing."""
+        verb = operation.split(" ", 1)[0]
+        past_tense = {
+            "create": "created",
+            "update": "updated",
+            "delete": "deleted",
+            "add": "added",
+        }.get(verb, "completed")
+        result = {
+            "status": "success",
+            "operation": operation,
+            "message": f"{target_type} '{target_id}' {past_tense} successfully",
+            "device_id": device_id,
+            "vdom": vdom,
+            "target_type": target_type,
+            "target_id": target_id,
+            "request_data": request_data or {},
+            "before": before,
+            "after": after,
+            "api_result": api_result or {},
+        }
+        return FortiGateFormatters.format_json_response(result, "Write Operation Result")
 
     def _format_connection_test(self, device_id: str, success: bool,
                               error: Optional[str] = None) -> List[Content]:

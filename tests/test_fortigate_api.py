@@ -193,7 +193,22 @@ class TestFortiGateAPIAsync:
         """Test get_firewall_policies calls correct endpoint."""
         with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": []}) as mock:
             await self.api.get_firewall_policies()
-            mock.assert_called_once_with("GET", "cmdb/firewall/policy", vdom=None)
+            mock.assert_any_call("GET", "cmdb/system/settings", vdom="root")
+            mock.assert_any_call("GET", "cmdb/firewall/policy", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_firewall_policies_policy_based_mode(self):
+        """Test policy-based NGFW mode uses security-policy endpoint."""
+        async def mock_request(method, endpoint, **kwargs):
+            if endpoint == "cmdb/system/settings":
+                return {"results": {"ngfw-mode": "policy-based"}}
+            return {"results": []}
+
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, side_effect=mock_request) as mock:
+            await self.api.get_firewall_policies(vdom="customer")
+
+            mock.assert_any_call("GET", "cmdb/system/settings", vdom="customer")
+            mock.assert_any_call("GET", "cmdb/firewall/security-policy", vdom="customer")
 
     @pytest.mark.asyncio
     async def test_create_firewall_policy(self):
@@ -201,14 +216,16 @@ class TestFortiGateAPIAsync:
         policy_data = {"name": "test", "action": "accept"}
         with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"status": "success"}) as mock:
             await self.api.create_firewall_policy(policy_data)
-            mock.assert_called_once_with("POST", "cmdb/firewall/policy", data=policy_data, vdom=None)
+            mock.assert_any_call("GET", "cmdb/system/settings", vdom="root")
+            mock.assert_any_call("POST", "cmdb/firewall/policy", data=policy_data, vdom=None)
 
     @pytest.mark.asyncio
     async def test_delete_firewall_policy(self):
         """Test delete_firewall_policy sends DELETE."""
         with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"status": "success"}) as mock:
             await self.api.delete_firewall_policy("5")
-            mock.assert_called_once_with("DELETE", "cmdb/firewall/policy/5", vdom=None)
+            mock.assert_any_call("GET", "cmdb/system/settings", vdom="root")
+            mock.assert_any_call("DELETE", "cmdb/firewall/policy/5", vdom=None)
 
     @pytest.mark.asyncio
     async def test_get_address_objects(self):
@@ -218,11 +235,25 @@ class TestFortiGateAPIAsync:
             mock.assert_called_once_with("GET", "cmdb/firewall/address", vdom=None)
 
     @pytest.mark.asyncio
+    async def test_get_address_object_detail(self):
+        """Test get_address_object_detail calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": {}}) as mock:
+            await self.api.get_address_object_detail("test_addr")
+            mock.assert_called_once_with("GET", "cmdb/firewall/address/test_addr", vdom=None)
+
+    @pytest.mark.asyncio
     async def test_get_service_objects(self):
         """Test get_service_objects calls correct endpoint."""
         with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": []}) as mock:
             await self.api.get_service_objects()
             mock.assert_called_once_with("GET", "cmdb/firewall.service/custom", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_service_object_detail(self):
+        """Test get_service_object_detail calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": {}}) as mock:
+            await self.api.get_service_object_detail("HTTP")
+            mock.assert_called_once_with("GET", "cmdb/firewall.service/custom/HTTP", vdom=None)
 
     @pytest.mark.asyncio
     async def test_get_static_routes(self):
@@ -259,3 +290,46 @@ class TestFortiGateAPIAsync:
         with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"status": "success"}) as mock:
             await self.api.delete_virtual_ip("test_vip")
             mock.assert_called_once_with("DELETE", "cmdb/firewall/vip/test_vip", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_virtual_servers_filters_load_balance_vips(self):
+        """Test get_virtual_servers returns load-balancing VIPs only."""
+        response = {
+            "results": [
+                {"name": "plain_vip", "type": "static-nat"},
+                {"name": "lb_vip", "type": "server-load-balance", "realservers": []},
+            ]
+        }
+        with patch.object(self.api, 'get_virtual_ips', new_callable=AsyncMock, return_value=response):
+            result = await self.api.get_virtual_servers()
+            assert result["results"] == [{"name": "lb_vip", "type": "server-load-balance", "realservers": []}]
+
+    @pytest.mark.asyncio
+    async def test_create_virtual_server_sets_load_balance_type(self):
+        """Test create_virtual_server forces server-load-balance type."""
+        data = {"name": "test_vs", "extip": "1.2.3.4"}
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"status": "success"}) as mock:
+            await self.api.create_virtual_server(data)
+            mock.assert_called_once_with(
+                "POST",
+                "cmdb/firewall/vip",
+                data={"name": "test_vs", "extip": "1.2.3.4", "type": "server-load-balance"},
+                vdom=None,
+            )
+
+    @pytest.mark.asyncio
+    async def test_load_balance_health_check_endpoints(self):
+        """Test load-balance health check endpoint mapping."""
+        monitor_data = {"name": "http-monitor", "type": "http"}
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"status": "success"}) as mock:
+            await self.api.get_load_balance_health_checks()
+            await self.api.get_load_balance_health_check_detail("http-monitor")
+            await self.api.create_load_balance_health_check(monitor_data)
+            await self.api.update_load_balance_health_check("http-monitor", {"interval": 5})
+            await self.api.delete_load_balance_health_check("http-monitor")
+
+            mock.assert_any_call("GET", "cmdb/firewall/ldb-monitor", vdom=None)
+            mock.assert_any_call("GET", "cmdb/firewall/ldb-monitor/http-monitor", vdom=None)
+            mock.assert_any_call("POST", "cmdb/firewall/ldb-monitor", data=monitor_data, vdom=None)
+            mock.assert_any_call("PUT", "cmdb/firewall/ldb-monitor/http-monitor", data={"interval": 5}, vdom=None)
+            mock.assert_any_call("DELETE", "cmdb/firewall/ldb-monitor/http-monitor", vdom=None)

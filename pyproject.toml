@@ -69,7 +69,8 @@ Repository = "https://github.com/your-username/fortigate-mcp-server"
 "Bug Tracker" = "https://github.com/your-username/fortigate-mcp-server/issues"
 
 [project.scripts]
-fortigate-mcp-server = "src.main:main"
+fortigate-mcp-server = "src.fortigate_mcp.server:main"
+fortigate-mcp-http = "src.fortigate_mcp.server_http:main"
 
 [tool.hatch.metadata]
 allow-direct-references = true

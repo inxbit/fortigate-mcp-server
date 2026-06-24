@@ -24,8 +24,29 @@ class FirewallTools(FortiGateTool):
             self._validate_required_params(policy_data=policy_data)
 
             api_client = self._get_device_api(device_id)
-            await api_client.create_firewall_policy(policy_data, vdom=vdom)
-            return self._format_operation_result("create firewall policy", device_id, True, "Policy created successfully")
+            api_result = await api_client.create_firewall_policy(policy_data, vdom=vdom)
+            policy_id = str(
+                api_result.get("mkey")
+                or policy_data.get("policyid")
+                or policy_data.get("id")
+                or "new"
+            )
+            after = None
+            if policy_id != "new":
+                try:
+                    after = await api_client.get_firewall_policy_detail(policy_id, vdom=vdom)
+                except Exception:
+                    after = None
+            return self._format_write_result(
+                "create firewall policy",
+                device_id,
+                "firewall_policy",
+                policy_id,
+                vdom=vdom,
+                request_data=policy_data,
+                after=after,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("create firewall policy", device_id, e)
 
@@ -37,8 +58,20 @@ class FirewallTools(FortiGateTool):
             self._validate_required_params(policy_id=policy_id, policy_data=policy_data)
 
             api_client = self._get_device_api(device_id)
-            await api_client.update_firewall_policy(policy_id, policy_data, vdom=vdom)
-            return self._format_operation_result("update firewall policy", device_id, True, f"Policy {policy_id} updated successfully")
+            before = await api_client.get_firewall_policy_detail(policy_id, vdom=vdom)
+            api_result = await api_client.update_firewall_policy(policy_id, policy_data, vdom=vdom)
+            after = await api_client.get_firewall_policy_detail(policy_id, vdom=vdom)
+            return self._format_write_result(
+                "update firewall policy",
+                device_id,
+                "firewall_policy",
+                policy_id,
+                vdom=vdom,
+                request_data=policy_data,
+                before=before,
+                after=after,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("update firewall policy", device_id, e)
 
@@ -83,7 +116,16 @@ class FirewallTools(FortiGateTool):
             self._validate_required_params(policy_id=policy_id)
 
             api_client = self._get_device_api(device_id)
-            await api_client.delete_firewall_policy(policy_id, vdom=vdom)
-            return self._format_operation_result("delete firewall policy", device_id, True, f"Policy {policy_id} deleted successfully")
+            before = await api_client.get_firewall_policy_detail(policy_id, vdom=vdom)
+            api_result = await api_client.delete_firewall_policy(policy_id, vdom=vdom)
+            return self._format_write_result(
+                "delete firewall policy",
+                device_id,
+                "firewall_policy",
+                policy_id,
+                vdom=vdom,
+                before=before,
+                api_result=api_result,
+            )
         except Exception as e:
             return self._handle_error("delete firewall policy", device_id, e)

@@ -6,7 +6,7 @@ set -e
 # Default values
 HOST="${MCP_HTTP_HOST:-0.0.0.0}"
 PORT="${MCP_HTTP_PORT:-8814}"
-PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"
+MCP_PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"
 CONFIG="${FORTIGATE_MCP_CONFIG:-$(pwd)/config/config.json}"
 
 # Check if config exists
@@ -19,7 +19,7 @@ fi
 echo "Starting FortiGate MCP HTTP Server..."
 echo "Host: $HOST"
 echo "Port: $PORT"
-echo "Path: $PATH"
+echo "Path: $MCP_PATH"
 echo "Config: $CONFIG"
 echo ""
 
@@ -33,5 +33,5 @@ fi
 exec python -m src.fortigate_mcp.server_http \
     --host "$HOST" \
     --port "$PORT" \
-    --path "$PATH" \
+    --path "$MCP_PATH" \
     --config "$CONFIG"
