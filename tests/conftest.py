@@ -64,6 +64,34 @@ def mock_fortigate_api():
         "results": [{"name": "root", "enabled": True}]
     })
 
+    mock_api.get_dns_settings = AsyncMock(return_value={
+        "results": {"primary": "8.8.8.8", "secondary": "1.1.1.1"}
+    })
+
+    mock_api.get_dns_databases = AsyncMock(return_value={
+        "results": [{"name": "example.test", "domain": "example.test"}]
+    })
+
+    mock_api.get_dns_database_detail = AsyncMock(return_value={
+        "results": {"name": "example.test", "domain": "example.test", "dns-entry": []}
+    })
+
+    mock_api.get_dns_servers = AsyncMock(return_value={
+        "results": [{"name": "port1", "mode": "recursive"}]
+    })
+
+    mock_api.get_dhcp_servers = AsyncMock(return_value={
+        "results": [{"id": 1, "interface": "port1", "default-gateway": "192.168.1.1"}]
+    })
+
+    mock_api.get_dhcp_server_detail = AsyncMock(return_value={
+        "results": {"id": 1, "interface": "port1", "default-gateway": "192.168.1.1"}
+    })
+
+    mock_api.get_dhcp_leases = AsyncMock(return_value={
+        "results": [{"ip": "192.168.1.10", "mac": "00:11:22:33:44:55", "status": "leased"}]
+    })
+
     mock_api.get_interfaces = AsyncMock(return_value={
         "results": [
             {"name": "port1", "status": "up"},

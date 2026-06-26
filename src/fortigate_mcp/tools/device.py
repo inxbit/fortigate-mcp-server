@@ -80,7 +80,8 @@ class DeviceTools(FortiGateTool):
     async def add_device(self, device_id: str, host: str, port: int = 443,
                    username: Optional[str] = None, password: Optional[str] = None,
                    api_token: Optional[str] = None, vdom: str = "root",
-                   verify_ssl: bool = True, timeout: int = 30) -> List[Content]:
+                   verify_ssl: bool = True, timeout: int = 30,
+                   ca_bundle: Optional[str] = None) -> List[Content]:
         """Add a new FortiGate device.
 
         Args:
@@ -93,6 +94,7 @@ class DeviceTools(FortiGateTool):
             vdom: Virtual Domain name (default: "root")
             verify_ssl: Whether to verify SSL certificates
             timeout: Request timeout in seconds
+            ca_bundle: Path to a CA bundle PEM file
 
         Returns:
             List of Content objects with operation result
@@ -117,7 +119,8 @@ class DeviceTools(FortiGateTool):
                 api_token=api_token,
                 vdom=vdom,
                 verify_ssl=verify_ssl,
-                timeout=timeout
+                timeout=timeout,
+                ca_bundle=ca_bundle
             )
 
             return self._format_operation_result(

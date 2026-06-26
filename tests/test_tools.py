@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import AsyncMock
 
 from src.fortigate_mcp.tools.device import DeviceTools
+from src.fortigate_mcp.tools.dns_dhcp import DNSDHCPTools
 from src.fortigate_mcp.tools.firewall import FirewallTools
 from src.fortigate_mcp.tools.load_balancing import LoadBalancingTools
 from src.fortigate_mcp.tools.network import NetworkTools
@@ -348,6 +349,96 @@ class TestNetworkTools:
     async def test_list_address_objects_device_not_found(self):
         """Test listing address objects for nonexistent device."""
         result = await self.network_tools.list_address_objects("nonexistent")
+
+        assert "Error" in result[0].text
+
+
+class TestDNSDHCPTools:
+    """DNS and DHCP read tool tests."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, fortigate_manager):
+        self.fortigate_manager = fortigate_manager
+        self.dns_dhcp_tools = DNSDHCPTools(fortigate_manager)
+
+    @pytest.mark.asyncio
+    async def test_get_dns_settings(self, mock_fortigate_api):
+        """Test reading DNS resolver settings."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.dns_dhcp_tools.get_dns_settings("test_device", vdom="root")
+
+        assert "DNS Settings" in result[0].text
+        mock_fortigate_api.get_dns_settings.assert_called_once_with(vdom="root")
+
+    @pytest.mark.asyncio
+    async def test_list_dns_databases(self, mock_fortigate_api):
+        """Test listing DNS databases."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.dns_dhcp_tools.list_dns_databases("test_device")
+
+        assert "DNS Databases" in result[0].text
+        assert "example.test" in result[0].text
+        mock_fortigate_api.get_dns_databases.assert_called_once_with(vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_dns_database_detail(self, mock_fortigate_api):
+        """Test reading DNS database detail."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.dns_dhcp_tools.get_dns_database_detail("test_device", "example.test")
+
+        assert "DNS Database Detail" in result[0].text
+        mock_fortigate_api.get_dns_database_detail.assert_called_once_with("example.test", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_list_dns_servers(self, mock_fortigate_api):
+        """Test listing DNS server interfaces."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.dns_dhcp_tools.list_dns_servers("test_device")
+
+        assert "DNS Servers" in result[0].text
+        assert "port1" in result[0].text
+        mock_fortigate_api.get_dns_servers.assert_called_once_with(vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_list_dhcp_servers(self, mock_fortigate_api):
+        """Test listing DHCP servers."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.dns_dhcp_tools.list_dhcp_servers("test_device")
+
+        assert "DHCP Servers" in result[0].text
+        assert "default-gateway" in result[0].text
+        mock_fortigate_api.get_dhcp_servers.assert_called_once_with(vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_dhcp_server_detail(self, mock_fortigate_api):
+        """Test reading DHCP server detail."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.dns_dhcp_tools.get_dhcp_server_detail("test_device", "1")
+
+        assert "DHCP Server Detail" in result[0].text
+        mock_fortigate_api.get_dhcp_server_detail.assert_called_once_with("1", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_list_dhcp_leases(self, mock_fortigate_api):
+        """Test listing DHCP leases."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.dns_dhcp_tools.list_dhcp_leases("test_device")
+
+        assert "DHCP Leases" in result[0].text
+        assert "192.168.1.10" in result[0].text
+        mock_fortigate_api.get_dhcp_leases.assert_called_once_with(vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_list_dhcp_servers_device_not_found(self):
+        """Test listing DHCP servers for nonexistent device."""
+        result = await self.dns_dhcp_tools.list_dhcp_servers("nonexistent")
 
         assert "Error" in result[0].text
 

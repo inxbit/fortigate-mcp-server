@@ -77,6 +77,25 @@ def test_http_server_run_uses_streamable_transport(monkeypatch, tmp_path):
     assert server.mcp.run_calls == [{"transport": "streamable-http"}]
 
 
+def test_http_server_registers_dns_dhcp_read_tools(monkeypatch, tmp_path):
+    """HTTP server registers first-class DNS and DHCP read tools."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+
+    server = FortiGateMCPHTTPServer(config_path=str(_write_config(tmp_path)))
+    tool_names = {name for name, _description in server.mcp.tools}
+
+    assert {
+        "get_dns_settings",
+        "list_dns_databases",
+        "get_dns_database_detail",
+        "list_dns_servers",
+        "list_dhcp_servers",
+        "get_dhcp_server_detail",
+        "list_dhcp_leases",
+    }.issubset(tool_names)
+
+
 def test_http_server_enables_auth_and_host_protection(monkeypatch, tmp_path):
     """Auth config wires FastMCP token verifier and transport security."""
     if not server_http.MCP_SECURITY_AVAILABLE:

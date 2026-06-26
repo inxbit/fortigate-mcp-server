@@ -15,6 +15,7 @@
         "api_token": "",
         "vdom": "root",
         "verify_ssl": true,
+        "ca_bundle": null,
         "timeout": 30
       },
       "backup": {
@@ -23,6 +24,7 @@
         "api_token": "your_api_token_here",
         "vdom": "root",
         "verify_ssl": true,
+        "ca_bundle": null,
         "timeout": 30
       }
     }

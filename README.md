@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
   <img src="https://img.shields.io/badge/MCP-1.0-green?style=flat-square" alt="MCP 1.0"/>
   <img src="https://img.shields.io/badge/async-httpx-orange?style=flat-square" alt="Async httpx"/>
-  <img src="https://img.shields.io/badge/tests-146%20passed-brightgreen?style=flat-square" alt="Tests"/>
+  <img src="https://img.shields.io/badge/tests-166%20passed-brightgreen?style=flat-square" alt="Tests"/>
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/>
 </p>
 
@@ -30,7 +30,7 @@
 
 ## Overview
 
-FortiGate MCP Server exposes FortiGate firewall management capabilities through the [Model Context Protocol](https://modelcontextprotocol.io/), enabling MCP-compatible tools to programmatically manage firewall policies, network objects, routing, VIPs, load-balancing virtual servers, real server members, health checks, and device configurations.
+FortiGate MCP Server exposes FortiGate firewall management capabilities through the [Model Context Protocol](https://modelcontextprotocol.io/), enabling MCP-compatible tools to programmatically manage firewall policies, network objects, routing, VIPs, load-balancing virtual servers, real server members, health checks, and device configurations, with read-only inspection for DNS and DHCP state.
 
 Built with **fully async Python**, persistent HTTP connection pooling, streamable HTTP support, and security-first defaults.
 
@@ -52,6 +52,13 @@ Built with **fully async Python**, persistent HTTP connection pooling, streamabl
 - Address objects (subnet, IP range, FQDN)
 - Service objects (TCP/UDP/SCTP with port ranges)
 - Full CRUD for address and service objects
+
+**DNS and DHCP Read Tools**
+- DNS resolver settings
+- DNS database zones and zone detail
+- DNS server interface configuration
+- DHCP server scopes and scope detail
+- Runtime DHCP leases
 
 **Virtual IP Management**
 - NAT/DNAT virtual IPs
@@ -116,6 +123,7 @@ Create a configuration file (e.g., `config/config.json`):
         "api_token": "your-api-token-here",
         "vdom": "root",
         "verify_ssl": true,
+        "ca_bundle": "/etc/ssl/certs/fortigate-chain.pem",
         "timeout": 30
       }
     }
@@ -163,7 +171,7 @@ export MCP_AUTH_TOKEN='<token-from-approved-secret-storage>'
 export MCP_ALLOWED_HOSTS='["localhost:8814","127.0.0.1:8814","mcp.example.com:8814"]'
 ```
 
-When using a FortiGate certificate issued for a DNS name, configure the device `host` with that DNS name, keep `verify_ssl: true`, and ensure the server trust store can validate the issuing chain. If the FortiGate presents an incomplete certificate chain, install the missing intermediate CA on the MCP host or configure the FortiGate to serve the full chain.
+When using a FortiGate certificate issued for a DNS name, configure the device `host` with that DNS name, keep `verify_ssl: true`, and ensure the server trust store can validate the issuing chain. If the FortiGate presents an incomplete certificate chain, install the missing intermediate CA on the MCP host, configure the FortiGate to serve the full chain, or set `ca_bundle` to a PEM bundle containing the trusted issuing chain.
 
 ### MCP Client Integration
 
@@ -231,6 +239,20 @@ When using a FortiGate certificate issued for a DNS name, configure the device `
 | `create_service_object` | Create service object (TCP/UDP/SCTP) |
 | `update_service_object` | Update a service object |
 | `delete_service_object` | Delete a service object |
+
+### DNS and DHCP Read Tools (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `get_dns_settings` | Get DNS resolver settings |
+| `list_dns_databases` | List local DNS database zones |
+| `get_dns_database_detail` | Get detailed DNS database zone configuration |
+| `list_dns_servers` | List DNS server interfaces |
+| `list_dhcp_servers` | List DHCP server scopes |
+| `get_dhcp_server_detail` | Get detailed DHCP server scope configuration |
+| `list_dhcp_leases` | List runtime DHCP leases |
+
+DNS and DHCP tools are read-only in this release. Write tools should be added only after the read contract is validated against the target FortiOS versions and the write response contract can preserve before/after audit metadata.
 
 ### Virtual IP Management (5 tools)
 
@@ -314,6 +336,7 @@ fortigate-mcp-server/
 │   │   ├── base.py              # Base tool class (error handling, formatting)
 │   │   ├── definitions.py       # Tool description constants
 │   │   ├── device.py            # Device management tools
+│   │   ├── dns_dhcp.py          # DNS and DHCP read tools
 │   │   ├── firewall.py          # Firewall policy tools
 │   │   ├── load_balancing.py    # Virtual server, real server, health check tools
 │   │   ├── network.py           # Address/service object tools
@@ -348,6 +371,7 @@ This server is designed with security-first defaults:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `verify_ssl` | `true` | SSL certificate verification enabled |
+| `ca_bundle` | `null` | Optional CA bundle PEM path for FortiGate TLS verification |
 | `allowed_origins` | `[]` | No CORS origins allowed (explicit opt-in) |
 | `require_auth` | `false` | MCP server authentication (enable for production) |
 | `allowed_hosts` | `[]` | No extra host restrictions unless configured |
@@ -356,7 +380,7 @@ This server is designed with security-first defaults:
 
 - Use **API tokens** instead of username/password authentication
 - Keep `verify_ssl: true`; connect by the FortiGate certificate DNS name, not a raw IP address, when the certificate is DNS-scoped
-- Install the FortiGate issuing CA/intermediate chain on the MCP host or configure the FortiGate to serve a complete chain
+- Install the FortiGate issuing CA/intermediate chain on the MCP host, configure the FortiGate to serve a complete chain, or set `ca_bundle` to a trusted PEM bundle
 - Set explicit `allowed_origins` when using HTTP transport
 - Enable `require_auth` with configured API tokens for the MCP server itself
 - Store MCP bearer tokens and FortiGate API tokens in approved runtime secret storage, not in Git
@@ -365,7 +389,7 @@ This server is designed with security-first defaults:
 
 ## Testing
 
-The project includes 146 tests covering the full async stack:
+The project includes 166 tests covering the full async stack:
 
 ```bash
 # Run all tests
@@ -405,6 +429,7 @@ python -m pytest --cov=src --cov-report=html
 **SSL certificate error**
 - For self-signed certificates in lab environments, set `verify_ssl: false`
 - For production, use the FortiGate certificate DNS name in `host`, keep `verify_ssl: true`, and make sure the MCP host trusts the full issuer chain
+- If the OS trust store does not include the issuing chain, set `ca_bundle` to a trusted PEM bundle path
 - If the FortiGate presents only the leaf certificate, install the missing intermediate CA on the MCP host or fix the FortiGate certificate bundle
 
 **HTTP MCP authentication failed**

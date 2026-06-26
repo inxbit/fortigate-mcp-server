@@ -28,6 +28,7 @@ from .config.loader import load_config
 from .core.logging import setup_logging
 from .core.fortigate import FortiGateManager
 from .tools.device import DeviceTools
+from .tools.dns_dhcp import DNSDHCPTools
 from .tools.firewall import FirewallTools
 from .tools.load_balancing import LoadBalancingTools
 from .tools.network import NetworkTools
@@ -42,6 +43,10 @@ from .tools.definitions import (
     UPDATE_ADDRESS_OBJECT_DESC, DELETE_ADDRESS_OBJECT_DESC,
     LIST_SERVICE_OBJECTS_DESC, CREATE_SERVICE_OBJECT_DESC,
     UPDATE_SERVICE_OBJECT_DESC, DELETE_SERVICE_OBJECT_DESC,
+    GET_DNS_SETTINGS_DESC, LIST_DNS_DATABASES_DESC,
+    GET_DNS_DATABASE_DETAIL_DESC, LIST_DNS_SERVERS_DESC,
+    LIST_DHCP_SERVERS_DESC, GET_DHCP_SERVER_DETAIL_DESC,
+    LIST_DHCP_LEASES_DESC,
     LIST_STATIC_ROUTES_DESC, CREATE_STATIC_ROUTE_DESC,
     GET_ROUTING_TABLE_DESC, LIST_INTERFACES_DESC, GET_INTERFACE_STATUS_DESC,
     UPDATE_STATIC_ROUTE_DESC, DELETE_STATIC_ROUTE_DESC,
@@ -81,6 +86,7 @@ class FortiGateMCPServer:
         
         # Initialize tools
         self.device_tools = DeviceTools(self.fortigate_manager)
+        self.dns_dhcp_tools = DNSDHCPTools(self.fortigate_manager)
         self.firewall_tools = FirewallTools(self.fortigate_manager)
         self.load_balancing_tools = LoadBalancingTools(self.fortigate_manager)
         self.network_tools = NetworkTools(self.fortigate_manager)
@@ -128,10 +134,11 @@ class FortiGateMCPServer:
             api_token: Annotated[Optional[str], Field(description="API token", default=None)] = None,
             vdom: Annotated[str, Field(description="Virtual Domain", default="root")] = "root",
             verify_ssl: Annotated[bool, Field(description="Verify SSL", default=True)] = True,
-            timeout: Annotated[int, Field(description="Timeout in seconds", default=30)] = 30
+            timeout: Annotated[int, Field(description="Timeout in seconds", default=30)] = 30,
+            ca_bundle: Annotated[Optional[str], Field(description="Path to CA bundle PEM file", default=None)] = None
         ):
             return await self.device_tools.add_device(
-                device_id, host, port, username, password, api_token, vdom, verify_ssl, timeout
+                device_id, host, port, username, password, api_token, vdom, verify_ssl, timeout, ca_bundle
             )
 
         @self.mcp.tool(description=REMOVE_DEVICE_DESC)
@@ -250,6 +257,58 @@ class FortiGateMCPServer:
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
             return await self.network_tools.delete_service_object(device_id, name, vdom)
+
+        # DNS and DHCP read tools
+        @self.mcp.tool(description=GET_DNS_SETTINGS_DESC)
+        async def get_dns_settings(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.dns_dhcp_tools.get_dns_settings(device_id, vdom)
+
+        @self.mcp.tool(description=LIST_DNS_DATABASES_DESC)
+        async def list_dns_databases(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.dns_dhcp_tools.list_dns_databases(device_id, vdom)
+
+        @self.mcp.tool(description=GET_DNS_DATABASE_DETAIL_DESC)
+        async def get_dns_database_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="DNS database zone name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.dns_dhcp_tools.get_dns_database_detail(device_id, name, vdom)
+
+        @self.mcp.tool(description=LIST_DNS_SERVERS_DESC)
+        async def list_dns_servers(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.dns_dhcp_tools.list_dns_servers(device_id, vdom)
+
+        @self.mcp.tool(description=LIST_DHCP_SERVERS_DESC)
+        async def list_dhcp_servers(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.dns_dhcp_tools.list_dhcp_servers(device_id, vdom)
+
+        @self.mcp.tool(description=GET_DHCP_SERVER_DETAIL_DESC)
+        async def get_dhcp_server_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            server_id: Annotated[str, Field(description="DHCP server ID")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.dns_dhcp_tools.get_dhcp_server_detail(device_id, server_id, vdom)
+
+        @self.mcp.tool(description=LIST_DHCP_LEASES_DESC)
+        async def list_dhcp_leases(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.dns_dhcp_tools.list_dhcp_leases(device_id, vdom)
 
         # Routing tools
         @self.mcp.tool(description=LIST_STATIC_ROUTES_DESC)
@@ -517,7 +576,8 @@ class FortiGateMCPServer:
                     "Device Management (6 tools)",
                     "Firewall Policy Management (5 tools)",
                     "Network Objects Management (8 tools)",
-                    "Routing Management (7 tools)",
+                    "DNS/DHCP Read Tools (7 tools)",
+                    "Routing Management (8 tools)",
                     "Virtual IP Management (5 tools)",
                     "Load-Balancing Management (15 tools)",
                     "System Tools (2 tools)"
