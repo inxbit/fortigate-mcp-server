@@ -342,6 +342,56 @@ Returns:
 - Deletion status confirmation
 """
 
+# DNS and DHCP Read Tool Descriptions
+GET_DNS_SETTINGS_DESC = """
+Get FortiGate DNS resolver settings.
+
+This read-only tool retrieves the system DNS resolver configuration for the
+selected device and VDOM.
+"""
+
+LIST_DNS_DATABASES_DESC = """
+List FortiGate DNS database zones.
+
+This read-only tool retrieves configured local DNS database zones and their
+zone-level metadata.
+"""
+
+GET_DNS_DATABASE_DETAIL_DESC = """
+Get detailed information for one FortiGate DNS database zone.
+
+This read-only tool retrieves the full zone configuration, including embedded
+DNS entry data when FortiOS returns it.
+"""
+
+LIST_DNS_SERVERS_DESC = """
+List FortiGate DNS server interfaces.
+
+This read-only tool retrieves interfaces where the FortiGate DNS service is
+enabled and their DNS service mode metadata.
+"""
+
+LIST_DHCP_SERVERS_DESC = """
+List FortiGate DHCP server configuration.
+
+This read-only tool retrieves configured DHCP server scopes for the selected
+device and VDOM.
+"""
+
+GET_DHCP_SERVER_DETAIL_DESC = """
+Get detailed information for one FortiGate DHCP server.
+
+This read-only tool retrieves a single DHCP server scope by its FortiOS server
+ID.
+"""
+
+LIST_DHCP_LEASES_DESC = """
+List FortiGate runtime DHCP leases.
+
+This read-only tool retrieves active DHCP lease information from the selected
+device and VDOM.
+"""
+
 # Virtual IP Tool Descriptions
 LIST_VIRTUAL_IPS_DESC = """
 List all Virtual IPs configured on a FortiGate device.

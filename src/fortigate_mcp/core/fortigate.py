@@ -69,9 +69,17 @@ class FortiGateAPI:
         if not config.verify_ssl:
             self.logger.warning(f"SSL verification disabled for device {device_id} - NOT recommended for production")
 
+        verify: Union[bool, str]
+        if not config.verify_ssl:
+            verify = False
+        elif config.ca_bundle:
+            verify = config.ca_bundle
+        else:
+            verify = True
+
         # Create persistent async HTTP client with connection pooling
         self._client = httpx.AsyncClient(
-            verify=config.verify_ssl,
+            verify=verify,
             timeout=config.timeout,
             headers=self.headers,
             auth=(config.username, config.password) if self.auth_method == "basic" else None,
@@ -193,6 +201,34 @@ class FortiGateAPI:
     async def get_vdoms(self) -> Dict[str, Any]:
         """Get list of Virtual Domains."""
         return await self._make_request("GET", "cmdb/system/vdom")
+
+    async def get_dns_settings(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get DNS resolver settings."""
+        return await self._make_request("GET", "cmdb/system/dns", vdom=vdom)
+
+    async def get_dns_databases(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get DNS database zones."""
+        return await self._make_request("GET", "cmdb/system/dns-database", vdom=vdom)
+
+    async def get_dns_database_detail(self, name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a DNS database zone."""
+        return await self._make_request("GET", f"cmdb/system/dns-database/{name}", vdom=vdom)
+
+    async def get_dns_servers(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get DNS server interfaces."""
+        return await self._make_request("GET", "cmdb/system/dns-server", vdom=vdom)
+
+    async def get_dhcp_servers(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get DHCP server configuration."""
+        return await self._make_request("GET", "cmdb/system.dhcp/server", vdom=vdom)
+
+    async def get_dhcp_server_detail(self, server_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a DHCP server."""
+        return await self._make_request("GET", f"cmdb/system.dhcp/server/{server_id}", vdom=vdom)
+
+    async def get_dhcp_leases(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get runtime DHCP lease information."""
+        return await self._make_request("GET", "monitor/system/dhcp", vdom=vdom)
 
     @staticmethod
     def _first_result(response: Dict[str, Any]) -> Dict[str, Any]:
@@ -484,7 +520,8 @@ class FortiGateManager:
     def add_device(self, device_id: str, host: str, port: int = 443,
                    username: Optional[str] = None, password: Optional[str] = None,
                    api_token: Optional[str] = None, vdom: str = "root",
-                   verify_ssl: bool = True, timeout: int = 30) -> None:
+                   verify_ssl: bool = True, timeout: int = 30,
+                   ca_bundle: Optional[str] = None) -> None:
         """Add a new device to the manager.
 
         Args:
@@ -497,6 +534,7 @@ class FortiGateManager:
             vdom: Virtual Domain name
             verify_ssl: Whether to verify SSL certificates
             timeout: Request timeout in seconds
+            ca_bundle: Path to a CA bundle PEM file
         """
         if device_id in self.devices:
             raise ValueError(f"Device '{device_id}' already exists")
@@ -510,6 +548,7 @@ class FortiGateManager:
             api_token=api_token,
             vdom=vdom,
             verify_ssl=verify_ssl,
+            ca_bundle=ca_bundle,
             timeout=timeout
         )
 

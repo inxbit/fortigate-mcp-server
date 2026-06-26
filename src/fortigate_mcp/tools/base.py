@@ -120,6 +120,13 @@ class FortiGateTool:
         elif resource_type == "virtual_ip_detail":
             return FortiGateFormatters.format_virtual_ip_detail(data)
         elif resource_type in {
+            "dns_settings",
+            "dns_databases",
+            "dns_database_detail",
+            "dns_servers",
+            "dhcp_servers",
+            "dhcp_server_detail",
+            "dhcp_leases",
             "virtual_servers",
             "virtual_server_detail",
             "virtual_server_status",
@@ -128,6 +135,13 @@ class FortiGateTool:
             "load_balance_health_check_detail",
         }:
             titles = {
+                "dns_settings": "DNS Settings",
+                "dns_databases": "DNS Databases",
+                "dns_database_detail": "DNS Database Detail",
+                "dns_servers": "DNS Servers",
+                "dhcp_servers": "DHCP Servers",
+                "dhcp_server_detail": "DHCP Server Detail",
+                "dhcp_leases": "DHCP Leases",
                 "virtual_servers": "Load-Balancing Virtual Servers",
                 "virtual_server_detail": "Load-Balancing Virtual Server Detail",
                 "virtual_server_status": "Load-Balancing Virtual Server Status",

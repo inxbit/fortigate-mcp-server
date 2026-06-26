@@ -167,6 +167,7 @@ def create_example_config() -> dict:
                     "api_token": "",
                     "vdom": "root",
                     "verify_ssl": True,
+                    "ca_bundle": None,
                     "timeout": 30
                 },
                 "backup": {
@@ -175,6 +176,7 @@ def create_example_config() -> dict:
                     "api_token": "your_api_token_here",
                     "vdom": "root",
                     "verify_ssl": True,
+                    "ca_bundle": None,
                     "timeout": 30
                 }
             }

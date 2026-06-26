@@ -39,6 +39,22 @@ def _write_valid_config(path):
     return path
 
 
+def _write_config_with_ca_bundle(path):
+    config = {
+        "fortigate": {
+            "devices": {
+                "fw1": {
+                    "host": "10.0.0.1",
+                    "api_token": "test-token",
+                    "ca_bundle": "/etc/ssl/certs/fortigate-chain.pem",
+                }
+            }
+        }
+    }
+    path.write_text(json.dumps(config), encoding="utf-8")
+    return path
+
+
 class TestConfigLoader:
     """Tests for config file path validation."""
 
@@ -48,6 +64,13 @@ class TestConfigLoader:
         config = load_config(str(config_path))
 
         assert "fw1" in config.fortigate.devices
+
+    def test_load_config_accepts_device_ca_bundle(self, tmp_path):
+        config_path = _write_config_with_ca_bundle(tmp_path / "fortigate.config.json")
+
+        config = load_config(str(config_path))
+
+        assert config.fortigate.devices["fw1"].ca_bundle == "/etc/ssl/certs/fortigate-chain.pem"
 
     def test_load_config_rejects_non_json_file(self, tmp_path):
         config_path = _write_valid_config(tmp_path / "fortigate.config.txt")
@@ -86,11 +109,21 @@ class TestFortiGateDeviceConfig:
         """Test that SSL verification defaults to True (security fix)."""
         config = FortiGateDeviceConfig(host="10.0.0.1")
         assert config.verify_ssl is True
+        assert config.ca_bundle is None
 
     def test_ssl_verify_explicit_false(self):
         """Test that SSL verification can be explicitly disabled."""
         config = FortiGateDeviceConfig(host="10.0.0.1", verify_ssl=False)
         assert config.verify_ssl is False
+
+    def test_ca_bundle_path(self):
+        """Test configuring a custom CA bundle path."""
+        config = FortiGateDeviceConfig(
+            host="10.0.0.1",
+            ca_bundle="/etc/ssl/certs/fortigate-chain.pem",
+        )
+
+        assert config.ca_bundle == "/etc/ssl/certs/fortigate-chain.pem"
 
     def test_full_config(self):
         """Test full device config with all fields."""
@@ -102,11 +135,13 @@ class TestFortiGateDeviceConfig:
             api_token="mytoken",
             vdom="production",
             verify_ssl=True,
+            ca_bundle="/etc/ssl/certs/fortigate-chain.pem",
             timeout=60
         )
         assert config.port == 8443
         assert config.username == "admin"
         assert config.vdom == "production"
+        assert config.ca_bundle == "/etc/ssl/certs/fortigate-chain.pem"
         assert config.timeout == 60
 
 

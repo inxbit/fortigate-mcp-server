@@ -59,6 +59,34 @@ class TestFortiGateAPIInit:
 
         assert isinstance(api._client, httpx.AsyncClient)
 
+    def test_init_uses_ca_bundle_for_httpx_verify(self):
+        """Test that a CA bundle path is passed to httpx verification."""
+        config = FortiGateDeviceConfig(
+            host="192.168.1.1",
+            api_token="test_token",
+            verify_ssl=True,
+            ca_bundle="/etc/ssl/certs/fortigate-chain.pem",
+        )
+
+        with patch("src.fortigate_mcp.core.fortigate.httpx.AsyncClient") as mock_client:
+            FortiGateAPI("test_device", config)
+
+        assert mock_client.call_args.kwargs["verify"] == "/etc/ssl/certs/fortigate-chain.pem"
+
+    def test_init_verify_ssl_false_disables_ca_bundle(self):
+        """Test that verify_ssl=false remains an explicit verification opt-out."""
+        config = FortiGateDeviceConfig(
+            host="192.168.1.1",
+            api_token="test_token",
+            verify_ssl=False,
+            ca_bundle="/etc/ssl/certs/fortigate-chain.pem",
+        )
+
+        with patch("src.fortigate_mcp.core.fortigate.httpx.AsyncClient") as mock_client:
+            FortiGateAPI("test_device", config)
+
+        assert mock_client.call_args.kwargs["verify"] is False
+
     def test_base_url_construction(self):
         """Test base URL is constructed correctly."""
         config = FortiGateDeviceConfig(
@@ -180,6 +208,55 @@ class TestFortiGateAPIAsync:
         with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": []}) as mock:
             result = await self.api.get_vdoms()
             mock.assert_called_once_with("GET", "cmdb/system/vdom")
+
+    @pytest.mark.asyncio
+    async def test_get_dns_settings(self):
+        """Test get_dns_settings calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": {}}) as mock:
+            await self.api.get_dns_settings(vdom="customer")
+            mock.assert_called_once_with("GET", "cmdb/system/dns", vdom="customer")
+
+    @pytest.mark.asyncio
+    async def test_get_dns_databases(self):
+        """Test get_dns_databases calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": []}) as mock:
+            await self.api.get_dns_databases()
+            mock.assert_called_once_with("GET", "cmdb/system/dns-database", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_dns_database_detail(self):
+        """Test get_dns_database_detail calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": {}}) as mock:
+            await self.api.get_dns_database_detail("example.test")
+            mock.assert_called_once_with("GET", "cmdb/system/dns-database/example.test", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_dns_servers(self):
+        """Test get_dns_servers calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": []}) as mock:
+            await self.api.get_dns_servers()
+            mock.assert_called_once_with("GET", "cmdb/system/dns-server", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_dhcp_servers(self):
+        """Test get_dhcp_servers calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": []}) as mock:
+            await self.api.get_dhcp_servers(vdom="customer")
+            mock.assert_called_once_with("GET", "cmdb/system.dhcp/server", vdom="customer")
+
+    @pytest.mark.asyncio
+    async def test_get_dhcp_server_detail(self):
+        """Test get_dhcp_server_detail calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": {}}) as mock:
+            await self.api.get_dhcp_server_detail("1")
+            mock.assert_called_once_with("GET", "cmdb/system.dhcp/server/1", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_dhcp_leases(self):
+        """Test get_dhcp_leases calls correct endpoint."""
+        with patch.object(self.api, '_make_request', new_callable=AsyncMock, return_value={"results": []}) as mock:
+            await self.api.get_dhcp_leases()
+            mock.assert_called_once_with("GET", "monitor/system/dhcp", vdom=None)
 
     @pytest.mark.asyncio
     async def test_get_interfaces(self):

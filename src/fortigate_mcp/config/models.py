@@ -29,6 +29,7 @@ class FortiGateDeviceConfig(BaseModel):
     api_token: Optional[str] = Field(default=None, description="API token for authentication")
     vdom: str = Field(default="root", description="Virtual Domain name")
     verify_ssl: bool = Field(default=True, description="SSL certificate verification (disable only for testing)")
+    ca_bundle: Optional[str] = Field(default=None, description="Path to a CA bundle PEM file for FortiGate TLS verification")
     timeout: int = Field(default=30, description="Request timeout in seconds")
 
 class FortiGateConfig(BaseModel):

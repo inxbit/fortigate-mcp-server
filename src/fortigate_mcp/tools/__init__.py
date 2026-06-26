@@ -2,6 +2,7 @@
 
 from .base import FortiGateTool
 from .device import DeviceTools
+from .dns_dhcp import DNSDHCPTools
 from .firewall import FirewallTools
 from .load_balancing import LoadBalancingTools
 from .network import NetworkTools
@@ -11,6 +12,7 @@ from .virtual_ip import VirtualIPTools
 __all__ = [
     "FortiGateTool",
     "DeviceTools",
+    "DNSDHCPTools",
     "FirewallTools", 
     "LoadBalancingTools",
     "NetworkTools",

@@ -38,6 +38,7 @@ from .config.loader import load_config
 from .core.logging import setup_logging
 from .core.fortigate import FortiGateManager
 from .tools.device import DeviceTools
+from .tools.dns_dhcp import DNSDHCPTools
 from .tools.firewall import FirewallTools
 from .tools.load_balancing import LoadBalancingTools
 from .tools.network import NetworkTools
@@ -136,6 +137,7 @@ class FortiGateMCPHTTPServer:
         
         # Initialize tools
         self.device_tools = DeviceTools(self.fortigate_manager)
+        self.dns_dhcp_tools = DNSDHCPTools(self.fortigate_manager)
         self.firewall_tools = FirewallTools(self.fortigate_manager)
         self.load_balancing_tools = LoadBalancingTools(self.fortigate_manager)
         self.network_tools = NetworkTools(self.fortigate_manager)
@@ -209,9 +211,10 @@ class FortiGateMCPHTTPServer:
         async def add_device(device_id: str, host: str, port: int = 443,
                       username: Optional[str] = None, password: Optional[str] = None,
                       api_token: Optional[str] = None, vdom: str = "root",
-                      verify_ssl: bool = True, timeout: int = 30):
+                      verify_ssl: bool = True, timeout: int = 30,
+                      ca_bundle: Optional[str] = None):
             return await self.device_tools.add_device(device_id, host, port, username, password,
-                                              api_token, vdom, verify_ssl, timeout)
+                                              api_token, vdom, verify_ssl, timeout, ca_bundle)
 
         @self.mcp.tool(description="Remove a FortiGate device")
         async def remove_device(device_id: str):
@@ -271,6 +274,35 @@ class FortiGateMCPHTTPServer:
         @self.mcp.tool(description="Delete service object")
         async def delete_service_object(device_id: str, name: str, vdom: Optional[str] = None):
             return await self.network_tools.delete_service_object(device_id, name, vdom)
+
+        # DNS and DHCP read tools
+        @self.mcp.tool(description="Get DNS resolver settings")
+        async def get_dns_settings(device_id: str, vdom: Optional[str] = None):
+            return await self.dns_dhcp_tools.get_dns_settings(device_id, vdom)
+
+        @self.mcp.tool(description="List DNS database zones")
+        async def list_dns_databases(device_id: str, vdom: Optional[str] = None):
+            return await self.dns_dhcp_tools.list_dns_databases(device_id, vdom)
+
+        @self.mcp.tool(description="Get DNS database zone detail")
+        async def get_dns_database_detail(device_id: str, name: str, vdom: Optional[str] = None):
+            return await self.dns_dhcp_tools.get_dns_database_detail(device_id, name, vdom)
+
+        @self.mcp.tool(description="List DNS server interfaces")
+        async def list_dns_servers(device_id: str, vdom: Optional[str] = None):
+            return await self.dns_dhcp_tools.list_dns_servers(device_id, vdom)
+
+        @self.mcp.tool(description="List DHCP server configuration")
+        async def list_dhcp_servers(device_id: str, vdom: Optional[str] = None):
+            return await self.dns_dhcp_tools.list_dhcp_servers(device_id, vdom)
+
+        @self.mcp.tool(description="Get DHCP server detail")
+        async def get_dhcp_server_detail(device_id: str, server_id: str, vdom: Optional[str] = None):
+            return await self.dns_dhcp_tools.get_dhcp_server_detail(device_id, server_id, vdom)
+
+        @self.mcp.tool(description="List DHCP leases")
+        async def list_dhcp_leases(device_id: str, vdom: Optional[str] = None):
+            return await self.dns_dhcp_tools.list_dhcp_leases(device_id, vdom)
 
         # Routing tools
         @self.mcp.tool(description="List static routes")
