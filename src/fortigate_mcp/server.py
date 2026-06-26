@@ -14,19 +14,86 @@ The server exposes a set of tools for managing FortiGate resources including:
 - Network object management
 - Routing configuration
 """
+
 import logging
 import os
-import sys
 import signal
-from typing import Optional, Annotated
+import sys
 from datetime import datetime
+from typing import Annotated, Optional
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 
 from .config.loader import load_config
-from .core.logging import setup_logging
 from .core.fortigate import FortiGateManager
+from .core.logging import setup_logging
+from .tools.definitions import (
+    ADD_DEVICE_DESC,
+    ADD_REAL_SERVER_DESC,
+    CREATE_ADDRESS_OBJECT_DESC,
+    CREATE_DHCP_SERVER_DESC,
+    CREATE_DNS_DATABASE_DESC,
+    CREATE_DNS_SERVER_DESC,
+    CREATE_FIREWALL_POLICY_DESC,
+    CREATE_LOAD_BALANCE_HEALTH_CHECK_DESC,
+    CREATE_SERVICE_OBJECT_DESC,
+    CREATE_STATIC_ROUTE_DESC,
+    CREATE_VIRTUAL_IP_DESC,
+    CREATE_VIRTUAL_SERVER_DESC,
+    DELETE_ADDRESS_OBJECT_DESC,
+    DELETE_DHCP_SERVER_DESC,
+    DELETE_DNS_DATABASE_DESC,
+    DELETE_DNS_SERVER_DESC,
+    DELETE_FIREWALL_POLICY_DESC,
+    DELETE_LOAD_BALANCE_HEALTH_CHECK_DESC,
+    DELETE_REAL_SERVER_DESC,
+    DELETE_SERVICE_OBJECT_DESC,
+    DELETE_STATIC_ROUTE_DESC,
+    DELETE_VIRTUAL_IP_DESC,
+    DELETE_VIRTUAL_SERVER_DESC,
+    DISCOVER_VDOMS_DESC,
+    GET_DEVICE_STATUS_DESC,
+    GET_DHCP_SERVER_DETAIL_DESC,
+    GET_DNS_DATABASE_DETAIL_DESC,
+    GET_DNS_SETTINGS_DESC,
+    GET_INTERFACE_STATUS_DESC,
+    GET_LOAD_BALANCE_HEALTH_CHECK_DETAIL_DESC,
+    GET_ROUTING_TABLE_DESC,
+    GET_SERVER_INFO_DESC,
+    GET_STATIC_ROUTE_DETAIL_DESC,
+    GET_VIRTUAL_IP_DETAIL_DESC,
+    GET_VIRTUAL_SERVER_DETAIL_DESC,
+    GET_VIRTUAL_SERVER_STATUS_DESC,
+    HEALTH_CHECK_DESC,
+    LIST_ADDRESS_OBJECTS_DESC,
+    LIST_DEVICES_DESC,
+    LIST_DHCP_LEASES_DESC,
+    LIST_DHCP_SERVERS_DESC,
+    LIST_DNS_DATABASES_DESC,
+    LIST_DNS_SERVERS_DESC,
+    LIST_FIREWALL_POLICIES_DESC,
+    LIST_INTERFACES_DESC,
+    LIST_LOAD_BALANCE_HEALTH_CHECKS_DESC,
+    LIST_REAL_SERVERS_DESC,
+    LIST_SERVICE_OBJECTS_DESC,
+    LIST_STATIC_ROUTES_DESC,
+    LIST_VIRTUAL_IPS_DESC,
+    LIST_VIRTUAL_SERVERS_DESC,
+    REMOVE_DEVICE_DESC,
+    TEST_DEVICE_CONNECTION_DESC,
+    UPDATE_ADDRESS_OBJECT_DESC,
+    UPDATE_DHCP_SERVER_DESC,
+    UPDATE_DNS_DATABASE_DESC,
+    UPDATE_DNS_SERVER_DESC,
+    UPDATE_FIREWALL_POLICY_DESC,
+    UPDATE_LOAD_BALANCE_HEALTH_CHECK_DESC,
+    UPDATE_REAL_SERVER_DESC,
+    UPDATE_SERVICE_OBJECT_DESC,
+    UPDATE_STATIC_ROUTE_DESC,
+    UPDATE_VIRTUAL_IP_DESC,
+    UPDATE_VIRTUAL_SERVER_DESC,
+)
 from .tools.device import DeviceTools
 from .tools.dns_dhcp import DNSDHCPTools
 from .tools.firewall import FirewallTools
@@ -34,36 +101,7 @@ from .tools.load_balancing import LoadBalancingTools
 from .tools.network import NetworkTools
 from .tools.routing import RoutingTools
 from .tools.virtual_ip import VirtualIPTools
-from .tools.definitions import (
-    LIST_DEVICES_DESC, GET_DEVICE_STATUS_DESC, TEST_DEVICE_CONNECTION_DESC,
-    ADD_DEVICE_DESC, REMOVE_DEVICE_DESC, DISCOVER_VDOMS_DESC,
-    LIST_FIREWALL_POLICIES_DESC, CREATE_FIREWALL_POLICY_DESC,
-    UPDATE_FIREWALL_POLICY_DESC, DELETE_FIREWALL_POLICY_DESC,
-    LIST_ADDRESS_OBJECTS_DESC, CREATE_ADDRESS_OBJECT_DESC,
-    UPDATE_ADDRESS_OBJECT_DESC, DELETE_ADDRESS_OBJECT_DESC,
-    LIST_SERVICE_OBJECTS_DESC, CREATE_SERVICE_OBJECT_DESC,
-    UPDATE_SERVICE_OBJECT_DESC, DELETE_SERVICE_OBJECT_DESC,
-    GET_DNS_SETTINGS_DESC, LIST_DNS_DATABASES_DESC,
-    GET_DNS_DATABASE_DETAIL_DESC, LIST_DNS_SERVERS_DESC,
-    LIST_DHCP_SERVERS_DESC, GET_DHCP_SERVER_DETAIL_DESC,
-    LIST_DHCP_LEASES_DESC,
-    LIST_STATIC_ROUTES_DESC, CREATE_STATIC_ROUTE_DESC,
-    GET_ROUTING_TABLE_DESC, LIST_INTERFACES_DESC, GET_INTERFACE_STATUS_DESC,
-    UPDATE_STATIC_ROUTE_DESC, DELETE_STATIC_ROUTE_DESC,
-    GET_STATIC_ROUTE_DETAIL_DESC,
-    LIST_VIRTUAL_IPS_DESC, CREATE_VIRTUAL_IP_DESC, UPDATE_VIRTUAL_IP_DESC,
-    GET_VIRTUAL_IP_DETAIL_DESC, DELETE_VIRTUAL_IP_DESC,
-    LIST_VIRTUAL_SERVERS_DESC, GET_VIRTUAL_SERVER_DETAIL_DESC,
-    CREATE_VIRTUAL_SERVER_DESC, UPDATE_VIRTUAL_SERVER_DESC,
-    DELETE_VIRTUAL_SERVER_DESC, GET_VIRTUAL_SERVER_STATUS_DESC,
-    LIST_REAL_SERVERS_DESC, ADD_REAL_SERVER_DESC, UPDATE_REAL_SERVER_DESC,
-    DELETE_REAL_SERVER_DESC, LIST_LOAD_BALANCE_HEALTH_CHECKS_DESC,
-    GET_LOAD_BALANCE_HEALTH_CHECK_DETAIL_DESC,
-    CREATE_LOAD_BALANCE_HEALTH_CHECK_DESC,
-    UPDATE_LOAD_BALANCE_HEALTH_CHECK_DESC,
-    DELETE_LOAD_BALANCE_HEALTH_CHECK_DESC,
-    HEALTH_CHECK_DESC, GET_SERVER_INFO_DESC,
-)
+
 
 class FortiGateMCPServer:
     """Main server class for FortiGate MCP."""
@@ -77,13 +115,12 @@ class FortiGateMCPServer:
         # Load configuration
         self.config = load_config(config_path)
         self.logger = setup_logging(self.config.logging)
-        
+
         # Initialize core components
         self.fortigate_manager = FortiGateManager(
-            self.config.fortigate.devices, 
-            self.config.auth
+            self.config.fortigate.devices, self.config.auth
         )
-        
+
         # Initialize tools
         self.device_tools = DeviceTools(self.fortigate_manager)
         self.dns_dhcp_tools = DNSDHCPTools(self.fortigate_manager)
@@ -92,7 +129,7 @@ class FortiGateMCPServer:
         self.network_tools = NetworkTools(self.fortigate_manager)
         self.routing_tools = RoutingTools(self.fortigate_manager)
         self.virtual_ip_tools = VirtualIPTools(self.fortigate_manager)
-        
+
         # Initialize MCP server
         self.mcp = FastMCP("FortiGateMCP")
         self._tests_passed: Optional[bool] = None
@@ -100,7 +137,7 @@ class FortiGateMCPServer:
 
     def _setup_tools(self) -> None:
         """Register MCP tools with the server."""
-        
+
         # Device management tools
         @self.mcp.tool(description=LIST_DEVICES_DESC)
         async def list_devices():
@@ -108,19 +145,19 @@ class FortiGateMCPServer:
 
         @self.mcp.tool(description=GET_DEVICE_STATUS_DESC)
         async def get_device_status(
-            device_id: Annotated[str, Field(description="FortiGate device identifier")]
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
         ):
             return await self.device_tools.get_device_status(device_id)
 
         @self.mcp.tool(description=TEST_DEVICE_CONNECTION_DESC)
         async def test_device_connection(
-            device_id: Annotated[str, Field(description="FortiGate device identifier")]
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
         ):
             return await self.device_tools.test_device_connection(device_id)
 
         @self.mcp.tool(description=DISCOVER_VDOMS_DESC)
         async def discover_vdoms(
-            device_id: Annotated[str, Field(description="FortiGate device identifier")]
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
         ):
             return await self.device_tools.discover_vdoms(device_id)
 
@@ -129,21 +166,45 @@ class FortiGateMCPServer:
             device_id: Annotated[str, Field(description="Unique device identifier")],
             host: Annotated[str, Field(description="FortiGate IP address or hostname")],
             port: Annotated[int, Field(description="HTTPS port", default=443)] = 443,
-            username: Annotated[Optional[str], Field(description="Username", default=None)] = None,
-            password: Annotated[Optional[str], Field(description="Password", default=None)] = None,
-            api_token: Annotated[Optional[str], Field(description="API token", default=None)] = None,
-            vdom: Annotated[str, Field(description="Virtual Domain", default="root")] = "root",
-            verify_ssl: Annotated[bool, Field(description="Verify SSL", default=True)] = True,
-            timeout: Annotated[int, Field(description="Timeout in seconds", default=30)] = 30,
-            ca_bundle: Annotated[Optional[str], Field(description="Path to CA bundle PEM file", default=None)] = None
+            username: Annotated[
+                Optional[str], Field(description="Username", default=None)
+            ] = None,
+            password: Annotated[
+                Optional[str], Field(description="Password", default=None)
+            ] = None,
+            api_token: Annotated[
+                Optional[str], Field(description="API token", default=None)
+            ] = None,
+            vdom: Annotated[
+                str, Field(description="Virtual Domain", default="root")
+            ] = "root",
+            verify_ssl: Annotated[
+                bool, Field(description="Verify SSL", default=True)
+            ] = True,
+            timeout: Annotated[
+                int, Field(description="Timeout in seconds", default=30)
+            ] = 30,
+            ca_bundle: Annotated[
+                Optional[str],
+                Field(description="Path to CA bundle PEM file", default=None),
+            ] = None,
         ):
             return await self.device_tools.add_device(
-                device_id, host, port, username, password, api_token, vdom, verify_ssl, timeout, ca_bundle
+                device_id,
+                host,
+                port,
+                username,
+                password,
+                api_token,
+                vdom,
+                verify_ssl,
+                timeout,
+                ca_bundle,
             )
 
         @self.mcp.tool(description=REMOVE_DEVICE_DESC)
         async def remove_device(
-            device_id: Annotated[str, Field(description="Device identifier to remove")]
+            device_id: Annotated[str, Field(description="Device identifier to remove")],
         ):
             return await self.device_tools.remove_device(device_id)
 
@@ -151,15 +212,21 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=LIST_FIREWALL_POLICIES_DESC)
         async def list_firewall_policies(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.firewall_tools.list_policies(device_id, vdom)
 
         @self.mcp.tool(description=CREATE_FIREWALL_POLICY_DESC)
         async def create_firewall_policy(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            policy_data: Annotated[dict, Field(description="Policy configuration as JSON")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            policy_data: Annotated[
+                dict, Field(description="Policy configuration as JSON")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.firewall_tools.create_policy(device_id, policy_data, vdom)
 
@@ -167,24 +234,40 @@ class FortiGateMCPServer:
         async def update_firewall_policy(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             policy_id: Annotated[str, Field(description="Policy ID to update")],
-            policy_data: Annotated[dict, Field(description="Updated policy configuration")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            policy_data: Annotated[
+                dict, Field(description="Updated policy configuration")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.firewall_tools.update_policy(device_id, policy_id, policy_data, vdom)
+            return await self.firewall_tools.update_policy(
+                device_id, policy_id, policy_data, vdom
+            )
 
-        @self.mcp.tool(description="Get detailed information for a specific firewall policy")
+        @self.mcp.tool(
+            description="Get detailed information for a specific firewall policy"
+        )
         async def get_firewall_policy_detail(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            policy_id: Annotated[str, Field(description="Policy ID to get details for")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            policy_id: Annotated[
+                str, Field(description="Policy ID to get details for")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.firewall_tools.get_policy_detail(device_id, policy_id, vdom)
+            return await self.firewall_tools.get_policy_detail(
+                device_id, policy_id, vdom
+            )
 
         @self.mcp.tool(description=DELETE_FIREWALL_POLICY_DESC)
         async def delete_firewall_policy(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             policy_id: Annotated[str, Field(description="Policy ID to delete")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.firewall_tools.delete_policy(device_id, policy_id, vdom)
 
@@ -192,7 +275,9 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=LIST_ADDRESS_OBJECTS_DESC)
         async def list_address_objects(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.network_tools.list_address_objects(device_id, vdom)
 
@@ -200,33 +285,49 @@ class FortiGateMCPServer:
         async def create_address_object(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Address object name")],
-            address_type: Annotated[str, Field(description="Address type (ipmask, iprange, fqdn)")],
-            address: Annotated[str, Field(description="Address value (IP/netmask, range, or FQDN)")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            address_type: Annotated[
+                str, Field(description="Address type (ipmask, iprange, fqdn)")
+            ],
+            address: Annotated[
+                str, Field(description="Address value (IP/netmask, range, or FQDN)")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.network_tools.create_address_object(device_id, name, address_type, address, vdom)
+            return await self.network_tools.create_address_object(
+                device_id, name, address_type, address, vdom
+            )
 
         @self.mcp.tool(description=UPDATE_ADDRESS_OBJECT_DESC)
         async def update_address_object(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Address object name")],
             address_data: Annotated[dict, Field(description="Address object updates")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.network_tools.update_address_object(device_id, name, address_data, vdom)
+            return await self.network_tools.update_address_object(
+                device_id, name, address_data, vdom
+            )
 
         @self.mcp.tool(description=DELETE_ADDRESS_OBJECT_DESC)
         async def delete_address_object(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Address object name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.network_tools.delete_address_object(device_id, name, vdom)
 
         @self.mcp.tool(description=LIST_SERVICE_OBJECTS_DESC)
         async def list_service_objects(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.network_tools.list_service_objects(device_id, vdom)
 
@@ -236,40 +337,56 @@ class FortiGateMCPServer:
             name: Annotated[str, Field(description="Service object name")],
             service_type: Annotated[str, Field(description="Service type")],
             protocol: Annotated[str, Field(description="Protocol (TCP, UDP, ICMP)")],
-            port: Annotated[Optional[str], Field(description="Port or port range")] = None,
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            port: Annotated[
+                Optional[str], Field(description="Port or port range")
+            ] = None,
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.network_tools.create_service_object(device_id, name, service_type, protocol, port, vdom)
+            return await self.network_tools.create_service_object(
+                device_id, name, service_type, protocol, port, vdom
+            )
 
         @self.mcp.tool(description=UPDATE_SERVICE_OBJECT_DESC)
         async def update_service_object(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Service object name")],
             service_data: Annotated[dict, Field(description="Service object updates")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.network_tools.update_service_object(device_id, name, service_data, vdom)
+            return await self.network_tools.update_service_object(
+                device_id, name, service_data, vdom
+            )
 
         @self.mcp.tool(description=DELETE_SERVICE_OBJECT_DESC)
         async def delete_service_object(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Service object name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.network_tools.delete_service_object(device_id, name, vdom)
 
-        # DNS and DHCP read tools
+        # DNS and DHCP tools
         @self.mcp.tool(description=GET_DNS_SETTINGS_DESC)
         async def get_dns_settings(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.dns_dhcp_tools.get_dns_settings(device_id, vdom)
 
         @self.mcp.tool(description=LIST_DNS_DATABASES_DESC)
         async def list_dns_databases(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.dns_dhcp_tools.list_dns_databases(device_id, vdom)
 
@@ -277,21 +394,107 @@ class FortiGateMCPServer:
         async def get_dns_database_detail(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="DNS database zone name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.dns_dhcp_tools.get_dns_database_detail(device_id, name, vdom)
+            return await self.dns_dhcp_tools.get_dns_database_detail(
+                device_id, name, vdom
+            )
+
+        @self.mcp.tool(description=CREATE_DNS_DATABASE_DESC)
+        async def create_dns_database(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            database_data: Annotated[
+                dict, Field(description="DNS database zone configuration")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.create_dns_database(
+                device_id, database_data, vdom
+            )
+
+        @self.mcp.tool(description=UPDATE_DNS_DATABASE_DESC)
+        async def update_dns_database(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="DNS database zone name")],
+            database_data: Annotated[
+                dict, Field(description="DNS database zone updates")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.update_dns_database(
+                device_id, name, database_data, vdom
+            )
+
+        @self.mcp.tool(description=DELETE_DNS_DATABASE_DESC)
+        async def delete_dns_database(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="DNS database zone name")],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.delete_dns_database(device_id, name, vdom)
 
         @self.mcp.tool(description=LIST_DNS_SERVERS_DESC)
         async def list_dns_servers(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.dns_dhcp_tools.list_dns_servers(device_id, vdom)
+
+        @self.mcp.tool(description=CREATE_DNS_SERVER_DESC)
+        async def create_dns_server(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            server_data: Annotated[
+                dict, Field(description="DNS server interface configuration")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.create_dns_server(
+                device_id, server_data, vdom
+            )
+
+        @self.mcp.tool(description=UPDATE_DNS_SERVER_DESC)
+        async def update_dns_server(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="DNS server interface name")],
+            server_data: Annotated[
+                dict, Field(description="DNS server interface updates")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.update_dns_server(
+                device_id, name, server_data, vdom
+            )
+
+        @self.mcp.tool(description=DELETE_DNS_SERVER_DESC)
+        async def delete_dns_server(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="DNS server interface name")],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.delete_dns_server(device_id, name, vdom)
 
         @self.mcp.tool(description=LIST_DHCP_SERVERS_DESC)
         async def list_dhcp_servers(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.dns_dhcp_tools.list_dhcp_servers(device_id, vdom)
 
@@ -299,14 +502,61 @@ class FortiGateMCPServer:
         async def get_dhcp_server_detail(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             server_id: Annotated[str, Field(description="DHCP server ID")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.dns_dhcp_tools.get_dhcp_server_detail(device_id, server_id, vdom)
+            return await self.dns_dhcp_tools.get_dhcp_server_detail(
+                device_id, server_id, vdom
+            )
+
+        @self.mcp.tool(description=CREATE_DHCP_SERVER_DESC)
+        async def create_dhcp_server(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            server_data: Annotated[
+                dict, Field(description="DHCP server scope configuration")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.create_dhcp_server(
+                device_id, server_data, vdom
+            )
+
+        @self.mcp.tool(description=UPDATE_DHCP_SERVER_DESC)
+        async def update_dhcp_server(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            server_id: Annotated[str, Field(description="DHCP server ID")],
+            server_data: Annotated[
+                dict, Field(description="DHCP server scope updates")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.update_dhcp_server(
+                device_id, server_id, server_data, vdom
+            )
+
+        @self.mcp.tool(description=DELETE_DHCP_SERVER_DESC)
+        async def delete_dhcp_server(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            server_id: Annotated[str, Field(description="DHCP server ID")],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.dns_dhcp_tools.delete_dhcp_server(
+                device_id, server_id, vdom
+            )
 
         @self.mcp.tool(description=LIST_DHCP_LEASES_DESC)
         async def list_dhcp_leases(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.dns_dhcp_tools.list_dhcp_leases(device_id, vdom)
 
@@ -314,7 +564,9 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=LIST_STATIC_ROUTES_DESC)
         async def list_static_routes(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.routing_tools.list_static_routes(device_id, vdom)
 
@@ -323,22 +575,32 @@ class FortiGateMCPServer:
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             dst: Annotated[str, Field(description="Destination network (IP/netmask)")],
             gateway: Annotated[str, Field(description="Next hop gateway IP")],
-            device: Annotated[Optional[str], Field(description="Outgoing interface name")] = None,
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            device: Annotated[
+                Optional[str], Field(description="Outgoing interface name")
+            ] = None,
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.routing_tools.create_static_route(device_id, dst, gateway, device, vdom)
+            return await self.routing_tools.create_static_route(
+                device_id, dst, gateway, device, vdom
+            )
 
         @self.mcp.tool(description=GET_ROUTING_TABLE_DESC)
         async def get_routing_table(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.routing_tools.get_routing_table(device_id, vdom)
 
         @self.mcp.tool(description=LIST_INTERFACES_DESC)
         async def list_interfaces(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.routing_tools.list_interfaces(device_id, vdom)
 
@@ -346,40 +608,58 @@ class FortiGateMCPServer:
         async def get_interface_status(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             interface_name: Annotated[str, Field(description="Interface name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.routing_tools.get_interface_status(device_id, interface_name, vdom)
+            return await self.routing_tools.get_interface_status(
+                device_id, interface_name, vdom
+            )
 
         @self.mcp.tool(description=UPDATE_STATIC_ROUTE_DESC)
         async def update_static_route(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             route_id: Annotated[str, Field(description="Route identifier")],
             route_data: Annotated[dict, Field(description="Route configuration")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.routing_tools.update_static_route(device_id, route_id, route_data, vdom)
+            return await self.routing_tools.update_static_route(
+                device_id, route_id, route_data, vdom
+            )
 
         @self.mcp.tool(description=DELETE_STATIC_ROUTE_DESC)
         async def delete_static_route(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             route_id: Annotated[str, Field(description="Route identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.routing_tools.delete_static_route(device_id, route_id, vdom)
+            return await self.routing_tools.delete_static_route(
+                device_id, route_id, vdom
+            )
 
         @self.mcp.tool(description=GET_STATIC_ROUTE_DETAIL_DESC)
         async def get_static_route_detail(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             route_id: Annotated[str, Field(description="Route identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.routing_tools.get_static_route_detail(device_id, route_id, vdom)
+            return await self.routing_tools.get_static_route_detail(
+                device_id, route_id, vdom
+            )
 
         # Virtual IP tools
         @self.mcp.tool(description=LIST_VIRTUAL_IPS_DESC)
         async def list_virtual_ips(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.virtual_ip_tools.list_virtual_ips(device_id, vdom)
 
@@ -390,14 +670,34 @@ class FortiGateMCPServer:
             extip: Annotated[str, Field(description="External IP address")],
             mappedip: Annotated[str, Field(description="Mapped internal IP address")],
             extintf: Annotated[str, Field(description="External interface name")],
-            portforward: Annotated[str, Field(description="Enable/disable port forwarding", default="disable")] = "disable",
-            protocol: Annotated[str, Field(description="Protocol type", default="tcp")] = "tcp",
-            extport: Annotated[Optional[str], Field(description="External port")] = None,
-            mappedport: Annotated[Optional[str], Field(description="Mapped port")] = None,
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            portforward: Annotated[
+                str,
+                Field(description="Enable/disable port forwarding", default="disable"),
+            ] = "disable",
+            protocol: Annotated[
+                str, Field(description="Protocol type", default="tcp")
+            ] = "tcp",
+            extport: Annotated[
+                Optional[str], Field(description="External port")
+            ] = None,
+            mappedport: Annotated[
+                Optional[str], Field(description="Mapped port")
+            ] = None,
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.virtual_ip_tools.create_virtual_ip(
-                device_id, name, extip, mappedip, extintf, portforward, protocol, extport, mappedport, vdom
+                device_id,
+                name,
+                extip,
+                mappedip,
+                extintf,
+                portforward,
+                protocol,
+                extport,
+                mappedport,
+                vdom,
             )
 
         @self.mcp.tool(description=UPDATE_VIRTUAL_IP_DESC)
@@ -405,23 +705,33 @@ class FortiGateMCPServer:
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Virtual IP name")],
             vip_data: Annotated[dict, Field(description="Virtual IP configuration")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.virtual_ip_tools.update_virtual_ip(device_id, name, vip_data, vdom)
+            return await self.virtual_ip_tools.update_virtual_ip(
+                device_id, name, vip_data, vdom
+            )
 
         @self.mcp.tool(description=GET_VIRTUAL_IP_DETAIL_DESC)
         async def get_virtual_ip_detail(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Virtual IP name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.virtual_ip_tools.get_virtual_ip_detail(device_id, name, vdom)
+            return await self.virtual_ip_tools.get_virtual_ip_detail(
+                device_id, name, vdom
+            )
 
         @self.mcp.tool(description=DELETE_VIRTUAL_IP_DESC)
         async def delete_virtual_ip(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Virtual IP name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.virtual_ip_tools.delete_virtual_ip(device_id, name, vdom)
 
@@ -429,7 +739,9 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=LIST_VIRTUAL_SERVERS_DESC)
         async def list_virtual_servers(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.load_balancing_tools.list_virtual_servers(device_id, vdom)
 
@@ -437,67 +749,107 @@ class FortiGateMCPServer:
         async def get_virtual_server_detail(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Virtual server name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.get_virtual_server_detail(device_id, name, vdom)
+            return await self.load_balancing_tools.get_virtual_server_detail(
+                device_id, name, vdom
+            )
 
         @self.mcp.tool(description=CREATE_VIRTUAL_SERVER_DESC)
         async def create_virtual_server(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            virtual_server_data: Annotated[dict, Field(description="Virtual server configuration")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            virtual_server_data: Annotated[
+                dict, Field(description="Virtual server configuration")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.create_virtual_server(device_id, virtual_server_data, vdom)
+            return await self.load_balancing_tools.create_virtual_server(
+                device_id, virtual_server_data, vdom
+            )
 
         @self.mcp.tool(description=UPDATE_VIRTUAL_SERVER_DESC)
         async def update_virtual_server(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Virtual server name")],
-            virtual_server_data: Annotated[dict, Field(description="Virtual server updates")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            virtual_server_data: Annotated[
+                dict, Field(description="Virtual server updates")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.update_virtual_server(device_id, name, virtual_server_data, vdom)
+            return await self.load_balancing_tools.update_virtual_server(
+                device_id, name, virtual_server_data, vdom
+            )
 
         @self.mcp.tool(description=DELETE_VIRTUAL_SERVER_DESC)
         async def delete_virtual_server(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Virtual server name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.delete_virtual_server(device_id, name, vdom)
+            return await self.load_balancing_tools.delete_virtual_server(
+                device_id, name, vdom
+            )
 
         @self.mcp.tool(description=GET_VIRTUAL_SERVER_STATUS_DESC)
         async def get_virtual_server_status(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Virtual server name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.get_virtual_server_status(device_id, name, vdom)
+            return await self.load_balancing_tools.get_virtual_server_status(
+                device_id, name, vdom
+            )
 
         @self.mcp.tool(description=LIST_REAL_SERVERS_DESC)
         async def list_real_servers(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             virtual_server: Annotated[str, Field(description="Virtual server name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.list_real_servers(device_id, virtual_server, vdom)
+            return await self.load_balancing_tools.list_real_servers(
+                device_id, virtual_server, vdom
+            )
 
         @self.mcp.tool(description=ADD_REAL_SERVER_DESC)
         async def add_real_server(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             virtual_server: Annotated[str, Field(description="Virtual server name")],
-            real_server_data: Annotated[dict, Field(description="Real server member configuration")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            real_server_data: Annotated[
+                dict, Field(description="Real server member configuration")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.add_real_server(device_id, virtual_server, real_server_data, vdom)
+            return await self.load_balancing_tools.add_real_server(
+                device_id, virtual_server, real_server_data, vdom
+            )
 
         @self.mcp.tool(description=UPDATE_REAL_SERVER_DESC)
         async def update_real_server(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             virtual_server: Annotated[str, Field(description="Virtual server name")],
-            member_id: Annotated[str, Field(description="Real server member ID/name/IP")],
-            real_server_data: Annotated[dict, Field(description="Real server member updates")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            member_id: Annotated[
+                str, Field(description="Real server member ID/name/IP")
+            ],
+            real_server_data: Annotated[
+                dict, Field(description="Real server member updates")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.load_balancing_tools.update_real_server(
                 device_id, virtual_server, member_id, real_server_data, vdom
@@ -507,15 +859,23 @@ class FortiGateMCPServer:
         async def delete_real_server(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             virtual_server: Annotated[str, Field(description="Virtual server name")],
-            member_id: Annotated[str, Field(description="Real server member ID/name/IP")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            member_id: Annotated[
+                str, Field(description="Real server member ID/name/IP")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.delete_real_server(device_id, virtual_server, member_id, vdom)
+            return await self.load_balancing_tools.delete_real_server(
+                device_id, virtual_server, member_id, vdom
+            )
 
         @self.mcp.tool(description=LIST_LOAD_BALANCE_HEALTH_CHECKS_DESC)
         async def list_load_balance_health_checks(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
             return await self.load_balancing_tools.list_health_checks(device_id, vdom)
 
@@ -523,45 +883,68 @@ class FortiGateMCPServer:
         async def get_load_balance_health_check_detail(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Health check name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.get_health_check_detail(device_id, name, vdom)
+            return await self.load_balancing_tools.get_health_check_detail(
+                device_id, name, vdom
+            )
 
         @self.mcp.tool(description=CREATE_LOAD_BALANCE_HEALTH_CHECK_DESC)
         async def create_load_balance_health_check(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            monitor_data: Annotated[dict, Field(description="Health check configuration")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            monitor_data: Annotated[
+                dict, Field(description="Health check configuration")
+            ],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.create_health_check(device_id, monitor_data, vdom)
+            return await self.load_balancing_tools.create_health_check(
+                device_id, monitor_data, vdom
+            )
 
         @self.mcp.tool(description=UPDATE_LOAD_BALANCE_HEALTH_CHECK_DESC)
         async def update_load_balance_health_check(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Health check name")],
             monitor_data: Annotated[dict, Field(description="Health check updates")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.update_health_check(device_id, name, monitor_data, vdom)
+            return await self.load_balancing_tools.update_health_check(
+                device_id, name, monitor_data, vdom
+            )
 
         @self.mcp.tool(description=DELETE_LOAD_BALANCE_HEALTH_CHECK_DESC)
         async def delete_load_balance_health_check(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             name: Annotated[str, Field(description="Health check name")],
-            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
         ):
-            return await self.load_balancing_tools.delete_health_check(device_id, name, vdom)
+            return await self.load_balancing_tools.delete_health_check(
+                device_id, name, vdom
+            )
 
         # System tools
         @self.mcp.tool(description=HEALTH_CHECK_DESC)
         async def health_check():
-            status = "healthy" if self._tests_passed is True else ("degraded" if self._tests_passed is False else "unknown")
+            status = (
+                "healthy"
+                if self._tests_passed is True
+                else ("degraded" if self._tests_passed is False else "unknown")
+            )
             details = {
                 "registered_devices": len(self.fortigate_manager.devices),
                 "server_version": self.config.server.version,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             from .formatting import FortiGateFormatters
+
             return FortiGateFormatters.format_health_status(status, details)
 
         @self.mcp.tool(description=GET_SERVER_INFO_DESC)
@@ -576,14 +959,15 @@ class FortiGateMCPServer:
                     "Device Management (6 tools)",
                     "Firewall Policy Management (5 tools)",
                     "Network Objects Management (8 tools)",
-                    "DNS/DHCP Read Tools (7 tools)",
+                    "DNS/DHCP Management (16 tools)",
                     "Routing Management (8 tools)",
                     "Virtual IP Management (5 tools)",
                     "Load-Balancing Management (15 tools)",
-                    "System Tools (2 tools)"
-                ]
+                    "System Tools (2 tools)",
+                ],
             }
             from .formatting import FortiGateFormatters
+
             return FortiGateFormatters.format_json_response(info, "Server Information")
 
     def start(self) -> None:
@@ -600,7 +984,12 @@ class FortiGateMCPServer:
 
         try:
             # Optionally run tests before serving
-            run_tests = os.getenv("RUN_TESTS_ON_START", "0").lower() in ("1", "true", "yes", "on")
+            run_tests = os.getenv("RUN_TESTS_ON_START", "0").lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
             if run_tests:
                 self.logger.info("Running startup tests...")
                 # Add test logic here

@@ -30,7 +30,7 @@
 
 ## Overview
 
-FortiGate MCP Server exposes FortiGate firewall management capabilities through the [Model Context Protocol](https://modelcontextprotocol.io/), enabling MCP-compatible tools to programmatically manage firewall policies, network objects, routing, VIPs, load-balancing virtual servers, real server members, health checks, and device configurations, with read-only inspection for DNS and DHCP state.
+FortiGate MCP Server exposes FortiGate firewall management capabilities through the [Model Context Protocol](https://modelcontextprotocol.io/), enabling MCP-compatible tools to programmatically manage firewall policies, network objects, routing, VIPs, load-balancing virtual servers, real server members, health checks, DNS/DHCP CMDB resources, and device configurations.
 
 Built with **fully async Python**, persistent HTTP connection pooling, streamable HTTP support, and security-first defaults.
 
@@ -53,12 +53,12 @@ Built with **fully async Python**, persistent HTTP connection pooling, streamabl
 - Service objects (TCP/UDP/SCTP with port ranges)
 - Full CRUD for address and service objects
 
-**DNS and DHCP Read Tools**
+**DNS and DHCP Management**
 - DNS resolver settings
-- DNS database zones and zone detail
-- DNS server interface configuration
-- DHCP server scopes and scope detail
-- Runtime DHCP leases
+- DNS database zone read/write operations
+- DNS server interface read/write operations
+- DHCP server scope read/write operations
+- Runtime DHCP lease inspection
 
 **Virtual IP Management**
 - NAT/DNAT virtual IPs
@@ -240,19 +240,28 @@ When using a FortiGate certificate issued for a DNS name, configure the device `
 | `update_service_object` | Update a service object |
 | `delete_service_object` | Delete a service object |
 
-### DNS and DHCP Read Tools (7 tools)
+### DNS and DHCP Management (16 tools)
 
 | Tool | Description |
 |------|-------------|
 | `get_dns_settings` | Get DNS resolver settings |
 | `list_dns_databases` | List local DNS database zones |
 | `get_dns_database_detail` | Get detailed DNS database zone configuration |
+| `create_dns_database` | Create a local DNS database zone |
+| `update_dns_database` | Update a local DNS database zone |
+| `delete_dns_database` | Delete a local DNS database zone |
 | `list_dns_servers` | List DNS server interfaces |
+| `create_dns_server` | Create DNS server interface configuration |
+| `update_dns_server` | Update DNS server interface configuration |
+| `delete_dns_server` | Delete DNS server interface configuration |
 | `list_dhcp_servers` | List DHCP server scopes |
 | `get_dhcp_server_detail` | Get detailed DHCP server scope configuration |
+| `create_dhcp_server` | Create a DHCP server scope |
+| `update_dhcp_server` | Update a DHCP server scope |
+| `delete_dhcp_server` | Delete a DHCP server scope |
 | `list_dhcp_leases` | List runtime DHCP leases |
 
-DNS and DHCP tools are read-only in this release. Write tools should be added only after the read contract is validated against the target FortiOS versions and the write response contract can preserve before/after audit metadata.
+DNS database, DNS server, and DHCP server writes use CMDB-backed FortiOS resources and return write-operation audit metadata with request data, target identifiers, API result, and before/after object state where available. DHCP leases are runtime state from `monitor/system/dhcp` and remain read-only.
 
 ### Virtual IP Management (5 tools)
 
@@ -336,7 +345,7 @@ fortigate-mcp-server/
 │   │   ├── base.py              # Base tool class (error handling, formatting)
 │   │   ├── definitions.py       # Tool description constants
 │   │   ├── device.py            # Device management tools
-│   │   ├── dns_dhcp.py          # DNS and DHCP read tools
+│   │   ├── dns_dhcp.py          # DNS and DHCP tools
 │   │   ├── firewall.py          # Firewall policy tools
 │   │   ├── load_balancing.py    # Virtual server, real server, health check tools
 │   │   ├── network.py           # Address/service object tools
