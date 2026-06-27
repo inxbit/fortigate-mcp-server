@@ -130,7 +130,7 @@ Create a configuration file (e.g., `config/config.json`):
   },
   "server": {
     "name": "fortigate-mcp-server",
-    "host": "0.0.0.0",
+    "host": "127.0.0.1",
     "port": 8814
   },
   "auth": {
@@ -157,13 +157,13 @@ python -m src.fortigate_mcp.server
 
 ```bash
 python -m src.fortigate_mcp.server_http \
-  --host 0.0.0.0 \
+  --host 127.0.0.1 \
   --port 8814 \
   --path /fortigate-mcp \
   --config config/config.json
 ```
 
-For production HTTP deployments, enable MCP bearer authentication and keep token values outside the repository:
+For production HTTP deployments that must be reachable from other hosts, pass an explicit exposed bind address such as `--host 0.0.0.0`, enable MCP bearer authentication, restrict allowed hosts/origins, and keep token values outside the repository:
 
 ```bash
 export MCP_REQUIRE_AUTH=true

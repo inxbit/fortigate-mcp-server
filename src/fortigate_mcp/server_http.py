@@ -108,7 +108,7 @@ class FortiGateMCPHTTPServer:
     def __init__(
         self,
         config_path: Optional[str] = None,
-        host: str = "0.0.0.0",
+        host: str = "127.0.0.1",
         port: int = 8814,
         path: str = "/fortigate-mcp",
     ):
@@ -827,7 +827,10 @@ class FortiGateMCPCommand:
     def add_arguments(self, parser):
         """Add command line arguments."""
         parser.add_argument(
-            "--host", type=str, default="0.0.0.0", help="Server host (default: 0.0.0.0)"
+            "--host",
+            type=str,
+            default="127.0.0.1",
+            help="Server host (default: 127.0.0.1)",
         )
         parser.add_argument(
             "--port", type=int, default=8814, help="Server port (default: 8814)"
@@ -846,7 +849,7 @@ class FortiGateMCPCommand:
 
         self.server = FortiGateMCPHTTPServer(
             config_path=config_path,
-            host=options.get("host", "0.0.0.0"),
+            host=options.get("host", "127.0.0.1"),
             port=options.get("port", 8814),
             path=options.get("path", "/fortigate-mcp"),
         )

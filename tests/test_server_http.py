@@ -1,5 +1,6 @@
 """HTTP server startup and security tests."""
 
+import argparse
 import json
 
 from src.fortigate_mcp import server as server_stdio
@@ -65,6 +66,27 @@ def test_http_server_configures_streamable_http(monkeypatch, tmp_path):
     assert server.mcp.kwargs["host"] == "0.0.0.0"
     assert server.mcp.kwargs["port"] == 8814
     assert server.mcp.kwargs["streamable_http_path"] == "/fortigate-mcp"
+
+
+def test_http_server_binds_loopback_by_default(monkeypatch, tmp_path):
+    """HTTP server defaults to loopback unless an exposed host is explicit."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+
+    server = FortiGateMCPHTTPServer(config_path=str(_write_config(tmp_path)))
+
+    assert server.mcp.kwargs["host"] == "127.0.0.1"
+
+
+def test_http_command_defaults_to_loopback_host():
+    """HTTP command default host should not expose the service on all interfaces."""
+    parser = argparse.ArgumentParser()
+    command = server_http.FortiGateMCPCommand()
+
+    command.add_arguments(parser)
+
+    args = parser.parse_args([])
+    assert args.host == "127.0.0.1"
 
 
 def test_http_server_run_uses_streamable_transport(monkeypatch, tmp_path):
@@ -182,3 +204,10 @@ def test_start_script_does_not_overwrite_shell_path():
 
     assert 'MCP_PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"' in lines
     assert 'PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"' not in lines
+
+
+def test_start_script_defaults_to_loopback_host():
+    """The HTTP startup script should require an explicit exposed bind host."""
+    lines = open("start_http_server.sh", encoding="utf-8").read().splitlines()
+
+    assert 'HOST="${MCP_HTTP_HOST:-127.0.0.1}"' in lines

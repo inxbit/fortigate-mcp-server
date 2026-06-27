@@ -4,7 +4,7 @@
 set -e
 
 # Default values
-HOST="${MCP_HTTP_HOST:-0.0.0.0}"
+HOST="${MCP_HTTP_HOST:-127.0.0.1}"
 PORT="${MCP_HTTP_PORT:-8814}"
 MCP_PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"
 CONFIG="${FORTIGATE_MCP_CONFIG:-$(pwd)/config/config.json}"

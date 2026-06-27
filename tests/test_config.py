@@ -7,20 +7,20 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from src.fortigate_mcp.config.loader import load_config
+from src.fortigate_mcp.config.loader import create_example_config, load_config
 from src.fortigate_mcp.config.models import (
-    FortiGateDeviceConfig,
-    FortiGateConfig,
+    AddressObjectParams,
     AuthConfig,
-    LoggingConfig,
-    ServerConfig,
-    RateLimitConfig,
     Config,
     DeviceCommandParams,
+    FortiGateConfig,
+    FortiGateDeviceConfig,
+    LoggingConfig,
     PolicyParams,
-    AddressObjectParams,
-    ServiceObjectParams,
+    RateLimitConfig,
     RouteParams,
+    ServerConfig,
+    ServiceObjectParams,
 )
 
 
@@ -70,7 +70,10 @@ class TestConfigLoader:
 
         config = load_config(str(config_path))
 
-        assert config.fortigate.devices["fw1"].ca_bundle == "/etc/ssl/certs/fortigate-chain.pem"
+        assert (
+            config.fortigate.devices["fw1"].ca_bundle
+            == "/etc/ssl/certs/fortigate-chain.pem"
+        )
 
     def test_load_config_rejects_non_json_file(self, tmp_path):
         config_path = _write_valid_config(tmp_path / "fortigate.config.txt")
@@ -136,7 +139,7 @@ class TestFortiGateDeviceConfig:
             vdom="production",
             verify_ssl=True,
             ca_bundle="/etc/ssl/certs/fortigate-chain.pem",
-            timeout=60
+            timeout=60,
         )
         assert config.port == 8443
         assert config.username == "admin"
@@ -164,7 +167,7 @@ class TestAuthConfig:
         config = AuthConfig(
             require_auth=True,
             api_tokens=["token1", "token2"],
-            allowed_origins=["https://app.example.com"]
+            allowed_origins=["https://app.example.com"],
         )
         assert config.require_auth is True
         assert len(config.api_tokens) == 2
@@ -177,10 +180,23 @@ class TestServerConfig:
     def test_default_server_config(self):
         """Test default server config."""
         config = ServerConfig()
-        assert config.host == "0.0.0.0"
+        assert config.host == "127.0.0.1"
         assert config.port == 8814
         assert config.name == "fortigate-mcp-server"
         assert config.version == "1.0.0"
+
+
+class TestExampleConfig:
+    """Tests for generated example configuration."""
+
+    def test_example_config_does_not_embed_credential_placeholders(self):
+        """Generated example config should not contain fake credential values."""
+        config = create_example_config()
+        devices = config["fortigate"]["devices"]
+
+        assert "password" not in devices["default"]
+        assert "api_token" not in devices["default"]
+        assert "api_token" not in devices["backup"]
 
 
 class TestLoggingConfig:
@@ -213,7 +229,7 @@ class TestFortiGateConfig:
         config = FortiGateConfig(
             devices={
                 "fw1": FortiGateDeviceConfig(host="10.0.0.1"),
-                "fw2": FortiGateDeviceConfig(host="10.0.0.2")
+                "fw2": FortiGateDeviceConfig(host="10.0.0.2"),
             }
         )
         assert len(config.devices) == 2
