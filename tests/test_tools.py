@@ -2,8 +2,10 @@
 MCP Tools tests - async tool implementations.
 """
 
-import pytest
+import json
 from unittest.mock import AsyncMock
+
+import pytest
 
 from src.fortigate_mcp.tools.device import DeviceTools
 from src.fortigate_mcp.tools.dns_dhcp import DNSDHCPTools
@@ -12,6 +14,11 @@ from src.fortigate_mcp.tools.load_balancing import LoadBalancingTools
 from src.fortigate_mcp.tools.network import NetworkTools
 from src.fortigate_mcp.tools.routing import RoutingTools
 from src.fortigate_mcp.tools.virtual_ip import VirtualIPTools
+
+
+def _json_payload(content):
+    """Extract the JSON body from a titled formatter response."""
+    return json.loads(content.text.split("\n\n", 1)[1])
 
 
 class TestDeviceTools:
@@ -85,7 +92,7 @@ class TestDeviceTools:
             device_id="new_device",
             host="192.168.1.1",
             username="admin",
-            password="password"
+            password="password",
         )
 
         assert "added" in result[0].text
@@ -101,7 +108,7 @@ class TestDeviceTools:
             device_id="existing",
             host="192.168.1.1",
             username="admin",
-            password="password"
+            password="password",
         )
 
         assert "already exists" in result[0].text
@@ -157,10 +164,14 @@ class TestFirewallTools:
         """Test creating a firewall policy."""
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
-        result = await self.firewall_tools.create_policy("test_device", sample_policy_data)
+        result = await self.firewall_tools.create_policy(
+            "test_device", sample_policy_data
+        )
 
         assert "created" in result[0].text
-        mock_fortigate_api.create_firewall_policy.assert_called_once_with(sample_policy_data, vdom=None)
+        mock_fortigate_api.create_firewall_policy.assert_called_once_with(
+            sample_policy_data, vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_update_policy(self, mock_fortigate_api):
@@ -168,10 +179,14 @@ class TestFirewallTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
         update_data = {"action": "deny"}
 
-        result = await self.firewall_tools.update_policy("test_device", "5", update_data)
+        result = await self.firewall_tools.update_policy(
+            "test_device", "5", update_data
+        )
 
         assert "updated" in result[0].text
-        mock_fortigate_api.update_firewall_policy.assert_called_once_with("5", update_data, vdom=None)
+        mock_fortigate_api.update_firewall_policy.assert_called_once_with(
+            "5", update_data, vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_get_policy_detail(self, mock_fortigate_api):
@@ -181,7 +196,9 @@ class TestFirewallTools:
         result = await self.firewall_tools.get_policy_detail("test_device", "35")
 
         assert "Policy Detail" in result[0].text
-        mock_fortigate_api.get_firewall_policy_detail.assert_called_once_with("35", vdom=None)
+        mock_fortigate_api.get_firewall_policy_detail.assert_called_once_with(
+            "35", vdom=None
+        )
         mock_fortigate_api.get_address_objects.assert_called_once()
         mock_fortigate_api.get_service_objects.assert_called_once()
 
@@ -205,7 +222,9 @@ class TestFirewallTools:
         result = await self.firewall_tools.delete_policy("test_device", "35")
 
         assert "deleted" in result[0].text
-        mock_fortigate_api.delete_firewall_policy.assert_called_once_with("35", vdom=None)
+        mock_fortigate_api.delete_firewall_policy.assert_called_once_with(
+            "35", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_list_policies_device_not_found(self):
@@ -216,13 +235,19 @@ class TestFirewallTools:
         assert "not found" in result[0].text
 
     @pytest.mark.asyncio
-    async def test_create_policy_with_vdom(self, mock_fortigate_api, sample_policy_data):
+    async def test_create_policy_with_vdom(
+        self, mock_fortigate_api, sample_policy_data
+    ):
         """Test creating policy with explicit VDOM."""
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
-        result = await self.firewall_tools.create_policy("test_device", sample_policy_data, vdom="custom_vdom")
+        result = await self.firewall_tools.create_policy(
+            "test_device", sample_policy_data, vdom="custom_vdom"
+        )
 
-        mock_fortigate_api.create_firewall_policy.assert_called_once_with(sample_policy_data, vdom="custom_vdom")
+        mock_fortigate_api.create_firewall_policy.assert_called_once_with(
+            sample_policy_data, vdom="custom_vdom"
+        )
 
 
 class TestNetworkTools:
@@ -253,7 +278,7 @@ class TestNetworkTools:
             device_id="test_device",
             name="test_addr",
             address_type="subnet",
-            address="192.168.1.0/24"
+            address="192.168.1.0/24",
         )
 
         assert "created" in result[0].text
@@ -266,9 +291,7 @@ class TestNetworkTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
         result = await self.network_tools.update_address_object(
-            "test_device",
-            "test_addr",
-            {"comment": "updated"}
+            "test_device", "test_addr", {"comment": "updated"}
         )
 
         assert "updated" in result[0].text
@@ -281,10 +304,14 @@ class TestNetworkTools:
         """Test deleting an address object."""
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
-        result = await self.network_tools.delete_address_object("test_device", "test_addr")
+        result = await self.network_tools.delete_address_object(
+            "test_device", "test_addr"
+        )
 
         assert "deleted" in result[0].text
-        mock_fortigate_api.delete_address_object.assert_called_once_with("test_addr", vdom=None)
+        mock_fortigate_api.delete_address_object.assert_called_once_with(
+            "test_addr", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_list_service_objects(self, mock_fortigate_api):
@@ -307,7 +334,7 @@ class TestNetworkTools:
             name="test_svc",
             service_type="TCP/UDP/SCTP",
             protocol="TCP",
-            port="8080"
+            port="8080",
         )
 
         assert "created" in result[0].text
@@ -325,9 +352,7 @@ class TestNetworkTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
         result = await self.network_tools.update_service_object(
-            "test_device",
-            "HTTP",
-            {"comment": "updated"}
+            "test_device", "HTTP", {"comment": "updated"}
         )
 
         assert "updated" in result[0].text
@@ -343,7 +368,9 @@ class TestNetworkTools:
         result = await self.network_tools.delete_service_object("test_device", "HTTP")
 
         assert "deleted" in result[0].text
-        mock_fortigate_api.delete_service_object.assert_called_once_with("HTTP", vdom=None)
+        mock_fortigate_api.delete_service_object.assert_called_once_with(
+            "HTTP", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_list_address_objects_device_not_found(self):
@@ -387,10 +414,14 @@ class TestDNSDHCPTools:
         """Test reading DNS database detail."""
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
-        result = await self.dns_dhcp_tools.get_dns_database_detail("test_device", "example.test")
+        result = await self.dns_dhcp_tools.get_dns_database_detail(
+            "test_device", "example.test"
+        )
 
         assert "DNS Database Detail" in result[0].text
-        mock_fortigate_api.get_dns_database_detail.assert_called_once_with("example.test", vdom=None)
+        mock_fortigate_api.get_dns_database_detail.assert_called_once_with(
+            "example.test", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_list_dns_servers(self, mock_fortigate_api):
@@ -422,7 +453,9 @@ class TestDNSDHCPTools:
         result = await self.dns_dhcp_tools.get_dhcp_server_detail("test_device", "1")
 
         assert "DHCP Server Detail" in result[0].text
-        mock_fortigate_api.get_dhcp_server_detail.assert_called_once_with("1", vdom=None)
+        mock_fortigate_api.get_dhcp_server_detail.assert_called_once_with(
+            "1", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_list_dhcp_leases(self, mock_fortigate_api):
@@ -441,6 +474,279 @@ class TestDNSDHCPTools:
         result = await self.dns_dhcp_tools.list_dhcp_servers("nonexistent")
 
         assert "Error" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_dns_database_write_tools_return_audit_metadata(
+        self, mock_fortigate_api
+    ):
+        """Test DNS database create/update/delete write metadata."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        database_data = {"name": "example.test", "domain": "example.test"}
+
+        created = await self.dns_dhcp_tools.create_dns_database(
+            "test_device",
+            database_data,
+            vdom="root",
+        )
+        updated = await self.dns_dhcp_tools.update_dns_database(
+            "test_device",
+            "example.test",
+            {"ttl": 300},
+            vdom="root",
+        )
+        deleted = await self.dns_dhcp_tools.delete_dns_database(
+            "test_device",
+            "example.test",
+            vdom="root",
+        )
+
+        created_payload = _json_payload(created[0])
+        updated_payload = _json_payload(updated[0])
+        deleted_payload = _json_payload(deleted[0])
+
+        assert created_payload["status"] == "success"
+        assert created_payload["target_type"] == "dns_database"
+        assert created_payload["target_id"] == "example.test"
+        assert created_payload["request_data"] == database_data
+        assert created_payload["before"] is None
+        assert (
+            created_payload["after"]
+            == mock_fortigate_api.get_dns_database_detail.return_value
+        )
+        assert (
+            updated_payload["before"]
+            == mock_fortigate_api.get_dns_database_detail.return_value
+        )
+        assert (
+            updated_payload["after"]
+            == mock_fortigate_api.get_dns_database_detail.return_value
+        )
+        assert (
+            deleted_payload["before"]
+            == mock_fortigate_api.get_dns_database_detail.return_value
+        )
+        assert deleted_payload["after"] is None
+        mock_fortigate_api.create_dns_database.assert_called_once_with(
+            database_data, vdom="root"
+        )
+        mock_fortigate_api.update_dns_database.assert_called_once_with(
+            "example.test", {"ttl": 300}, vdom="root"
+        )
+        mock_fortigate_api.delete_dns_database.assert_called_once_with(
+            "example.test", vdom="root"
+        )
+
+    @pytest.mark.asyncio
+    async def test_dns_database_create_uses_api_result_target_for_readback(
+        self, mock_fortigate_api
+    ):
+        """Test DNS database create readback follows FortiGate's returned key."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.create_dns_database = AsyncMock(
+            return_value={"status": "success", "mkey": "canonical.example"}
+        )
+
+        created = await self.dns_dhcp_tools.create_dns_database(
+            "test_device",
+            {"name": "requested.example", "domain": "requested.example"},
+        )
+
+        created_payload = _json_payload(created[0])
+        assert created_payload["target_id"] == "canonical.example"
+        mock_fortigate_api.get_dns_database_detail.assert_called_once_with(
+            "canonical.example", vdom=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_dns_database_create_reports_success_when_readback_fails(
+        self, mock_fortigate_api
+    ):
+        """Test a successful DNS database create is not hidden by readback failure."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_dns_database_detail.side_effect = RuntimeError(
+            "readback denied"
+        )
+
+        created = await self.dns_dhcp_tools.create_dns_database(
+            "test_device",
+            {"name": "example.test", "domain": "example.test"},
+        )
+
+        created_payload = _json_payload(created[0])
+        assert created_payload["status"] == "success"
+        assert created_payload["after"] is None
+        assert created_payload["audit_warnings"] == [
+            {"stage": "after", "message": "readback denied"}
+        ]
+        mock_fortigate_api.create_dns_database.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_dns_database_update_reports_success_when_audit_reads_fail(
+        self, mock_fortigate_api
+    ):
+        """Test a successful DNS database update is not hidden by audit read failure."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_dns_database_detail.side_effect = RuntimeError(
+            "readback denied"
+        )
+
+        updated = await self.dns_dhcp_tools.update_dns_database(
+            "test_device",
+            "example.test",
+            {"ttl": 300},
+        )
+
+        updated_payload = _json_payload(updated[0])
+        assert updated_payload["status"] == "success"
+        assert updated_payload["before"] is None
+        assert updated_payload["after"] is None
+        assert updated_payload["audit_warnings"] == [
+            {"stage": "before", "message": "readback denied"},
+            {"stage": "after", "message": "readback denied"},
+        ]
+        mock_fortigate_api.update_dns_database.assert_called_once_with(
+            "example.test", {"ttl": 300}, vdom=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_dns_server_write_tools_return_audit_metadata(
+        self, mock_fortigate_api
+    ):
+        """Test DNS server interface create/update/delete write metadata."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        server_data = {"name": "port1", "mode": "recursive"}
+
+        created = await self.dns_dhcp_tools.create_dns_server(
+            "test_device", server_data
+        )
+        updated = await self.dns_dhcp_tools.update_dns_server(
+            "test_device",
+            "port1",
+            {"mode": "forward-only"},
+        )
+        deleted = await self.dns_dhcp_tools.delete_dns_server("test_device", "port1")
+
+        created_payload = _json_payload(created[0])
+        updated_payload = _json_payload(updated[0])
+        deleted_payload = _json_payload(deleted[0])
+
+        assert created_payload["target_type"] == "dns_server"
+        assert created_payload["target_id"] == "port1"
+        assert (
+            created_payload["after"]
+            == mock_fortigate_api.get_dns_server_detail.return_value
+        )
+        assert (
+            updated_payload["before"]
+            == mock_fortigate_api.get_dns_server_detail.return_value
+        )
+        assert (
+            updated_payload["after"]
+            == mock_fortigate_api.get_dns_server_detail.return_value
+        )
+        assert (
+            deleted_payload["before"]
+            == mock_fortigate_api.get_dns_server_detail.return_value
+        )
+        assert deleted_payload["after"] is None
+        mock_fortigate_api.create_dns_server.assert_called_once_with(
+            server_data, vdom=None
+        )
+        mock_fortigate_api.update_dns_server.assert_called_once_with(
+            "port1", {"mode": "forward-only"}, vdom=None
+        )
+        mock_fortigate_api.delete_dns_server.assert_called_once_with("port1", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_dns_server_create_uses_api_result_target_for_readback(
+        self, mock_fortigate_api
+    ):
+        """Test DNS server create readback follows FortiGate's returned key."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.create_dns_server = AsyncMock(
+            return_value={"status": "success", "mkey": "Network Service"}
+        )
+
+        created = await self.dns_dhcp_tools.create_dns_server(
+            "test_device",
+            {"name": "network-service", "interface": "network-service"},
+        )
+
+        created_payload = _json_payload(created[0])
+        assert created_payload["target_id"] == "Network Service"
+        mock_fortigate_api.get_dns_server_detail.assert_called_once_with(
+            "Network Service", vdom=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_dhcp_server_write_tools_return_audit_metadata(
+        self, mock_fortigate_api
+    ):
+        """Test DHCP server create/update/delete write metadata."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        server_data = {"id": 1, "interface": "port1"}
+
+        created = await self.dns_dhcp_tools.create_dhcp_server(
+            "test_device", server_data
+        )
+        updated = await self.dns_dhcp_tools.update_dhcp_server(
+            "test_device",
+            "1",
+            {"status": "disable"},
+        )
+        deleted = await self.dns_dhcp_tools.delete_dhcp_server("test_device", "1")
+
+        created_payload = _json_payload(created[0])
+        updated_payload = _json_payload(updated[0])
+        deleted_payload = _json_payload(deleted[0])
+
+        assert created_payload["target_type"] == "dhcp_server"
+        assert created_payload["target_id"] == "1"
+        assert created_payload["request_data"] == server_data
+        assert (
+            created_payload["after"]
+            == mock_fortigate_api.get_dhcp_server_detail.return_value
+        )
+        assert (
+            updated_payload["before"]
+            == mock_fortigate_api.get_dhcp_server_detail.return_value
+        )
+        assert (
+            updated_payload["after"]
+            == mock_fortigate_api.get_dhcp_server_detail.return_value
+        )
+        assert (
+            deleted_payload["before"]
+            == mock_fortigate_api.get_dhcp_server_detail.return_value
+        )
+        assert deleted_payload["after"] is None
+        mock_fortigate_api.create_dhcp_server.assert_called_once_with(
+            server_data, vdom=None
+        )
+        mock_fortigate_api.update_dhcp_server.assert_called_once_with(
+            "1", {"status": "disable"}, vdom=None
+        )
+        mock_fortigate_api.delete_dhcp_server.assert_called_once_with("1", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_dhcp_delete_reports_success_when_before_readback_fails(
+        self, mock_fortigate_api
+    ):
+        """Test a successful DHCP delete is not blocked by best-effort audit read."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_dhcp_server_detail.side_effect = RuntimeError(
+            "readback denied"
+        )
+
+        deleted = await self.dns_dhcp_tools.delete_dhcp_server("test_device", "1")
+
+        deleted_payload = _json_payload(deleted[0])
+        assert deleted_payload["status"] == "success"
+        assert deleted_payload["before"] is None
+        assert deleted_payload["audit_warnings"] == [
+            {"stage": "before", "message": "readback denied"}
+        ]
+        mock_fortigate_api.delete_dhcp_server.assert_called_once_with("1", vdom=None)
 
 
 class TestRoutingTools:
@@ -468,9 +774,7 @@ class TestRoutingTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
         result = await self.routing_tools.create_static_route(
-            device_id="test_device",
-            dst="10.0.0.0/8",
-            gateway="192.168.1.1"
+            device_id="test_device", dst="10.0.0.0/8", gateway="192.168.1.1"
         )
 
         assert "created" in result[0].text
@@ -494,7 +798,9 @@ class TestRoutingTools:
         result = await self.routing_tools.get_interface_status("test_device", "port1")
 
         assert "port1" in result[0].text
-        mock_fortigate_api.get_interface_status.assert_called_once_with("port1", vdom=None)
+        mock_fortigate_api.get_interface_status.assert_called_once_with(
+            "port1", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_get_routing_table(self, mock_fortigate_api):
@@ -513,10 +819,14 @@ class TestRoutingTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
         route_data = {"gateway": "192.168.2.1"}
 
-        result = await self.routing_tools.update_static_route("test_device", "1", route_data)
+        result = await self.routing_tools.update_static_route(
+            "test_device", "1", route_data
+        )
 
         assert "updated" in result[0].text
-        mock_fortigate_api.update_static_route.assert_called_once_with("1", route_data, vdom=None)
+        mock_fortigate_api.update_static_route.assert_called_once_with(
+            "1", route_data, vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_delete_static_route(self, mock_fortigate_api):
@@ -537,7 +847,9 @@ class TestRoutingTools:
 
         assert len(result) > 0
         assert result[0].text is not None
-        mock_fortigate_api.get_static_route_detail.assert_called_once_with("1", vdom=None)
+        mock_fortigate_api.get_static_route_detail.assert_called_once_with(
+            "1", vdom=None
+        )
 
 
 class TestVirtualIPTools:
@@ -569,7 +881,7 @@ class TestVirtualIPTools:
             name="test_vip",
             extip="1.2.3.4",
             mappedip="10.0.0.1",
-            extintf="wan1"
+            extintf="wan1",
         )
 
         assert "created" in result[0].text
@@ -584,10 +896,14 @@ class TestVirtualIPTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
         update_data = {"extip": "5.6.7.8"}
 
-        result = await self.vip_tools.update_virtual_ip("test_device", "test_vip", update_data)
+        result = await self.vip_tools.update_virtual_ip(
+            "test_device", "test_vip", update_data
+        )
 
         assert "updated" in result[0].text
-        mock_fortigate_api.update_virtual_ip.assert_called_once_with("test_vip", update_data, vdom=None)
+        mock_fortigate_api.update_virtual_ip.assert_called_once_with(
+            "test_vip", update_data, vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_get_virtual_ip_detail(self, mock_fortigate_api):
@@ -598,7 +914,9 @@ class TestVirtualIPTools:
 
         assert len(result) > 0
         assert result[0].text is not None
-        mock_fortigate_api.get_virtual_ip_detail.assert_called_once_with("test_vip", vdom=None)
+        mock_fortigate_api.get_virtual_ip_detail.assert_called_once_with(
+            "test_vip", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_delete_virtual_ip(self, mock_fortigate_api):
@@ -608,7 +926,9 @@ class TestVirtualIPTools:
         result = await self.vip_tools.delete_virtual_ip("test_device", "test_vip")
 
         assert "deleted" in result[0].text
-        mock_fortigate_api.delete_virtual_ip.assert_called_once_with("test_vip", vdom=None)
+        mock_fortigate_api.delete_virtual_ip.assert_called_once_with(
+            "test_vip", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_list_virtual_ips_device_not_found(self):
@@ -631,7 +951,7 @@ class TestVirtualIPTools:
             portforward="enable",
             protocol="tcp",
             extport="443",
-            mappedport="8443"
+            mappedport="8443",
         )
 
         assert "created" in result[0].text
@@ -672,8 +992,12 @@ class TestLoadBalancingTools:
         result = await self.lb_tools.create_virtual_server("test_device", data)
 
         assert "created" in result[0].text
-        mock_fortigate_api.create_virtual_server.assert_called_once_with(data, vdom=None)
-        mock_fortigate_api.get_virtual_server_detail.assert_called_once_with("test_vs", vdom=None)
+        mock_fortigate_api.create_virtual_server.assert_called_once_with(
+            data, vdom=None
+        )
+        mock_fortigate_api.get_virtual_server_detail.assert_called_once_with(
+            "test_vs", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_update_virtual_server(self, mock_fortigate_api):
@@ -681,9 +1005,7 @@ class TestLoadBalancingTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
         result = await self.lb_tools.update_virtual_server(
-            "test_device",
-            "test_vs",
-            {"ldb-method": "least-session"}
+            "test_device", "test_vs", {"ldb-method": "least-session"}
         )
 
         assert "updated" in result[0].text
@@ -699,7 +1021,9 @@ class TestLoadBalancingTools:
         result = await self.lb_tools.delete_virtual_server("test_device", "test_vs")
 
         assert "deleted" in result[0].text
-        mock_fortigate_api.delete_virtual_server.assert_called_once_with("test_vs", vdom=None)
+        mock_fortigate_api.delete_virtual_server.assert_called_once_with(
+            "test_vs", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_get_virtual_server_status(self, mock_fortigate_api):
@@ -709,7 +1033,9 @@ class TestLoadBalancingTools:
         result = await self.lb_tools.get_virtual_server_status("test_device", "test_vs")
 
         assert "runtime_status_available" in result[0].text
-        mock_fortigate_api.get_virtual_server_status.assert_called_once_with("test_vs", vdom=None)
+        mock_fortigate_api.get_virtual_server_status.assert_called_once_with(
+            "test_vs", vdom=None
+        )
 
     @pytest.mark.asyncio
     async def test_list_real_servers(self, mock_fortigate_api):
@@ -739,10 +1065,7 @@ class TestLoadBalancingTools:
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api
 
         result = await self.lb_tools.update_real_server(
-            "test_device",
-            "test_vs",
-            "1",
-            {"port": 8080}
+            "test_device", "test_vs", "1", {"port": 8080}
         )
 
         assert "updated" in result[0].text
@@ -767,13 +1090,10 @@ class TestLoadBalancingTools:
 
         listed = await self.lb_tools.list_health_checks("test_device")
         created = await self.lb_tools.create_health_check(
-            "test_device",
-            {"name": "http-monitor", "type": "http", "interval": 5}
+            "test_device", {"name": "http-monitor", "type": "http", "interval": 5}
         )
         updated = await self.lb_tools.update_health_check(
-            "test_device",
-            "http-monitor",
-            {"interval": 10}
+            "test_device", "http-monitor", {"interval": 10}
         )
         deleted = await self.lb_tools.delete_health_check("test_device", "http-monitor")
 

@@ -342,7 +342,7 @@ Returns:
 - Deletion status confirmation
 """
 
-# DNS and DHCP Read Tool Descriptions
+# DNS and DHCP Tool Descriptions
 GET_DNS_SETTINGS_DESC = """
 Get FortiGate DNS resolver settings.
 
@@ -364,11 +364,53 @@ This read-only tool retrieves the full zone configuration, including embedded
 DNS entry data when FortiOS returns it.
 """
 
+CREATE_DNS_DATABASE_DESC = """
+Create a FortiGate DNS database zone.
+
+This write tool creates a local DNS database zone and returns audit metadata
+including request data and the post-create object state when FortiOS returns it.
+"""
+
+UPDATE_DNS_DATABASE_DESC = """
+Update a FortiGate DNS database zone.
+
+This write tool updates a local DNS database zone and returns before/after
+metadata for investigation and change tracking.
+"""
+
+DELETE_DNS_DATABASE_DESC = """
+Delete a FortiGate DNS database zone.
+
+This write tool deletes a local DNS database zone and returns the pre-delete
+object state for auditability.
+"""
+
 LIST_DNS_SERVERS_DESC = """
 List FortiGate DNS server interfaces.
 
 This read-only tool retrieves interfaces where the FortiGate DNS service is
 enabled and their DNS service mode metadata.
+"""
+
+CREATE_DNS_SERVER_DESC = """
+Create a FortiGate DNS server interface configuration.
+
+This write tool enables or configures DNS service behavior on an interface and
+returns post-create metadata when the target key is available.
+"""
+
+UPDATE_DNS_SERVER_DESC = """
+Update a FortiGate DNS server interface configuration.
+
+This write tool modifies DNS service settings for an interface and returns
+before/after metadata.
+"""
+
+DELETE_DNS_SERVER_DESC = """
+Delete a FortiGate DNS server interface configuration.
+
+This write tool removes DNS service configuration from an interface and returns
+pre-delete metadata.
 """
 
 LIST_DHCP_SERVERS_DESC = """
@@ -383,6 +425,26 @@ Get detailed information for one FortiGate DHCP server.
 
 This read-only tool retrieves a single DHCP server scope by its FortiOS server
 ID.
+"""
+
+CREATE_DHCP_SERVER_DESC = """
+Create a FortiGate DHCP server scope.
+
+This write tool creates a CMDB-backed DHCP server scope and returns audit
+metadata, including the created object when its FortiOS ID is available.
+"""
+
+UPDATE_DHCP_SERVER_DESC = """
+Update a FortiGate DHCP server scope.
+
+This write tool modifies a DHCP server scope and returns before/after metadata.
+"""
+
+DELETE_DHCP_SERVER_DESC = """
+Delete a FortiGate DHCP server scope.
+
+This write tool deletes a DHCP server scope and returns the pre-delete object
+state. Runtime DHCP leases remain read-only.
 """
 
 LIST_DHCP_LEASES_DESC = """

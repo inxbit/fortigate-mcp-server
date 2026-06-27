@@ -1,7 +1,9 @@
 """HTTP server startup and security tests."""
 
+import argparse
 import json
 
+from src.fortigate_mcp import server as server_stdio
 from src.fortigate_mcp import server_http
 from src.fortigate_mcp.server_http import FortiGateMCPHTTPServer
 
@@ -66,6 +68,27 @@ def test_http_server_configures_streamable_http(monkeypatch, tmp_path):
     assert server.mcp.kwargs["streamable_http_path"] == "/fortigate-mcp"
 
 
+def test_http_server_binds_loopback_by_default(monkeypatch, tmp_path):
+    """HTTP server defaults to loopback unless an exposed host is explicit."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+
+    server = FortiGateMCPHTTPServer(config_path=str(_write_config(tmp_path)))
+
+    assert server.mcp.kwargs["host"] == "127.0.0.1"
+
+
+def test_http_command_defaults_to_loopback_host():
+    """HTTP command default host should not expose the service on all interfaces."""
+    parser = argparse.ArgumentParser()
+    command = server_http.FortiGateMCPCommand()
+
+    command.add_arguments(parser)
+
+    args = parser.parse_args([])
+    assert args.host == "127.0.0.1"
+
+
 def test_http_server_run_uses_streamable_transport(monkeypatch, tmp_path):
     """HTTP server run uses the current MCP SDK streamable HTTP transport."""
     FakeFastMCP.instances = []
@@ -78,7 +101,7 @@ def test_http_server_run_uses_streamable_transport(monkeypatch, tmp_path):
 
 
 def test_http_server_registers_dns_dhcp_read_tools(monkeypatch, tmp_path):
-    """HTTP server registers first-class DNS and DHCP read tools."""
+    """HTTP server registers first-class DNS and DHCP tools."""
     FakeFastMCP.instances = []
     monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
 
@@ -89,10 +112,40 @@ def test_http_server_registers_dns_dhcp_read_tools(monkeypatch, tmp_path):
         "get_dns_settings",
         "list_dns_databases",
         "get_dns_database_detail",
+        "create_dns_database",
+        "update_dns_database",
+        "delete_dns_database",
         "list_dns_servers",
+        "create_dns_server",
+        "update_dns_server",
+        "delete_dns_server",
         "list_dhcp_servers",
         "get_dhcp_server_detail",
+        "create_dhcp_server",
+        "update_dhcp_server",
+        "delete_dhcp_server",
         "list_dhcp_leases",
+    }.issubset(tool_names)
+
+
+def test_stdio_server_registers_dns_dhcp_write_tools(monkeypatch, tmp_path):
+    """STDIO server registers DNS and DHCP write tools too."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_stdio, "FastMCP", FakeFastMCP)
+
+    server = server_stdio.FortiGateMCPServer(config_path=str(_write_config(tmp_path)))
+    tool_names = {name for name, _description in server.mcp.tools}
+
+    assert {
+        "create_dns_database",
+        "update_dns_database",
+        "delete_dns_database",
+        "create_dns_server",
+        "update_dns_server",
+        "delete_dns_server",
+        "create_dhcp_server",
+        "update_dhcp_server",
+        "delete_dhcp_server",
     }.issubset(tool_names)
 
 
@@ -151,3 +204,10 @@ def test_start_script_does_not_overwrite_shell_path():
 
     assert 'MCP_PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"' in lines
     assert 'PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"' not in lines
+
+
+def test_start_script_defaults_to_loopback_host():
+    """The HTTP startup script should require an explicit exposed bind host."""
+    lines = open("start_http_server.sh", encoding="utf-8").read().splitlines()
+
+    assert 'HOST="${MCP_HTTP_HOST:-127.0.0.1}"' in lines
