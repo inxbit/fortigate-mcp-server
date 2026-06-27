@@ -19,6 +19,11 @@ from typing import Optional
 from .models import Config
 
 
+def _env_reference(name: str) -> str:
+    """Return a placeholder reference without embedding a credential value."""
+    return "${" + name + "}"
+
+
 def _resolve_config_path(config_path: str) -> Path:
     """Resolve and validate a FortiGate MCP JSON config path."""
     config_file = Path(config_path).expanduser()
@@ -174,6 +179,7 @@ def create_example_config() -> dict:
                     "host": "192.168.1.1",
                     "port": 443,
                     "username": "admin",
+                    "api_token": _env_reference("FORTIGATE_API_TOKEN"),
                     "vdom": "root",
                     "verify_ssl": True,
                     "ca_bundle": None,
@@ -182,6 +188,7 @@ def create_example_config() -> dict:
                 "backup": {
                     "host": "192.168.1.2",
                     "port": 443,
+                    "api_token": _env_reference("FORTIGATE_BACKUP_API_TOKEN"),
                     "vdom": "root",
                     "verify_ssl": True,
                     "ca_bundle": None,

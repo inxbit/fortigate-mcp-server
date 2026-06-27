@@ -558,6 +558,57 @@ class TestDNSDHCPTools:
         )
 
     @pytest.mark.asyncio
+    async def test_dns_database_create_reports_success_when_readback_fails(
+        self, mock_fortigate_api
+    ):
+        """Test a successful DNS database create is not hidden by readback failure."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_dns_database_detail.side_effect = RuntimeError(
+            "readback denied"
+        )
+
+        created = await self.dns_dhcp_tools.create_dns_database(
+            "test_device",
+            {"name": "example.test", "domain": "example.test"},
+        )
+
+        created_payload = _json_payload(created[0])
+        assert created_payload["status"] == "success"
+        assert created_payload["after"] is None
+        assert created_payload["audit_warnings"] == [
+            {"stage": "after", "message": "readback denied"}
+        ]
+        mock_fortigate_api.create_dns_database.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_dns_database_update_reports_success_when_audit_reads_fail(
+        self, mock_fortigate_api
+    ):
+        """Test a successful DNS database update is not hidden by audit read failure."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_dns_database_detail.side_effect = RuntimeError(
+            "readback denied"
+        )
+
+        updated = await self.dns_dhcp_tools.update_dns_database(
+            "test_device",
+            "example.test",
+            {"ttl": 300},
+        )
+
+        updated_payload = _json_payload(updated[0])
+        assert updated_payload["status"] == "success"
+        assert updated_payload["before"] is None
+        assert updated_payload["after"] is None
+        assert updated_payload["audit_warnings"] == [
+            {"stage": "before", "message": "readback denied"},
+            {"stage": "after", "message": "readback denied"},
+        ]
+        mock_fortigate_api.update_dns_database.assert_called_once_with(
+            "example.test", {"ttl": 300}, vdom=None
+        )
+
+    @pytest.mark.asyncio
     async def test_dns_server_write_tools_return_audit_metadata(
         self, mock_fortigate_api
     ):
@@ -675,6 +726,26 @@ class TestDNSDHCPTools:
         mock_fortigate_api.update_dhcp_server.assert_called_once_with(
             "1", {"status": "disable"}, vdom=None
         )
+        mock_fortigate_api.delete_dhcp_server.assert_called_once_with("1", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_dhcp_delete_reports_success_when_before_readback_fails(
+        self, mock_fortigate_api
+    ):
+        """Test a successful DHCP delete is not blocked by best-effort audit read."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_dhcp_server_detail.side_effect = RuntimeError(
+            "readback denied"
+        )
+
+        deleted = await self.dns_dhcp_tools.delete_dhcp_server("test_device", "1")
+
+        deleted_payload = _json_payload(deleted[0])
+        assert deleted_payload["status"] == "success"
+        assert deleted_payload["before"] is None
+        assert deleted_payload["audit_warnings"] == [
+            {"stage": "before", "message": "readback denied"}
+        ]
         mock_fortigate_api.delete_dhcp_server.assert_called_once_with("1", vdom=None)
 
 

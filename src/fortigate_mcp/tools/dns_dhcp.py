@@ -30,6 +30,22 @@ class DNSDHCPTools(FortiGateTool):
 
         return None
 
+    async def _read_audit_detail(
+        self,
+        reader,
+        target_id: str,
+        *,
+        stage: str,
+        vdom: Optional[str],
+        audit_warnings: List[Dict[str, str]],
+    ) -> Optional[Dict[str, Any]]:
+        """Read best-effort audit metadata without masking write success."""
+        try:
+            return await reader(target_id, vdom=vdom)
+        except Exception as exc:
+            audit_warnings.append({"stage": stage, "message": str(exc)})
+            return None
+
     async def get_dns_settings(
         self,
         device_id: str,
@@ -93,7 +109,14 @@ class DNSDHCPTools(FortiGateTool):
             target_id = (
                 self._target_id(api_result, "mkey", "name", "domain") or target_id
             )
-            after = await api_client.get_dns_database_detail(target_id, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            after = await self._read_audit_detail(
+                api_client.get_dns_database_detail,
+                target_id,
+                stage="after",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             return self._format_write_result(
                 "create DNS database",
                 device_id,
@@ -103,6 +126,7 @@ class DNSDHCPTools(FortiGateTool):
                 request_data=database_data,
                 after=after,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("create DNS database", device_id, e)
@@ -120,11 +144,24 @@ class DNSDHCPTools(FortiGateTool):
             self._validate_required_params(name=name, database_data=database_data)
 
             api_client = self._get_device_api(device_id)
-            before = await api_client.get_dns_database_detail(name, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            before = await self._read_audit_detail(
+                api_client.get_dns_database_detail,
+                name,
+                stage="before",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             api_result = await api_client.update_dns_database(
                 name, database_data, vdom=vdom
             )
-            after = await api_client.get_dns_database_detail(name, vdom=vdom)
+            after = await self._read_audit_detail(
+                api_client.get_dns_database_detail,
+                name,
+                stage="after",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             return self._format_write_result(
                 "update DNS database",
                 device_id,
@@ -135,6 +172,7 @@ class DNSDHCPTools(FortiGateTool):
                 before=before,
                 after=after,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("update DNS database", device_id, e)
@@ -151,7 +189,14 @@ class DNSDHCPTools(FortiGateTool):
             self._validate_required_params(name=name)
 
             api_client = self._get_device_api(device_id)
-            before = await api_client.get_dns_database_detail(name, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            before = await self._read_audit_detail(
+                api_client.get_dns_database_detail,
+                name,
+                stage="before",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             api_result = await api_client.delete_dns_database(name, vdom=vdom)
             return self._format_write_result(
                 "delete DNS database",
@@ -161,6 +206,7 @@ class DNSDHCPTools(FortiGateTool):
                 vdom=vdom,
                 before=before,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("delete DNS database", device_id, e)
@@ -198,7 +244,14 @@ class DNSDHCPTools(FortiGateTool):
             target_id = (
                 self._target_id(api_result, "mkey", "name", "interface") or target_id
             )
-            after = await api_client.get_dns_server_detail(target_id, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            after = await self._read_audit_detail(
+                api_client.get_dns_server_detail,
+                target_id,
+                stage="after",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             return self._format_write_result(
                 "create DNS server",
                 device_id,
@@ -208,6 +261,7 @@ class DNSDHCPTools(FortiGateTool):
                 request_data=server_data,
                 after=after,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("create DNS server", device_id, e)
@@ -225,11 +279,24 @@ class DNSDHCPTools(FortiGateTool):
             self._validate_required_params(name=name, server_data=server_data)
 
             api_client = self._get_device_api(device_id)
-            before = await api_client.get_dns_server_detail(name, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            before = await self._read_audit_detail(
+                api_client.get_dns_server_detail,
+                name,
+                stage="before",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             api_result = await api_client.update_dns_server(
                 name, server_data, vdom=vdom
             )
-            after = await api_client.get_dns_server_detail(name, vdom=vdom)
+            after = await self._read_audit_detail(
+                api_client.get_dns_server_detail,
+                name,
+                stage="after",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             return self._format_write_result(
                 "update DNS server",
                 device_id,
@@ -240,6 +307,7 @@ class DNSDHCPTools(FortiGateTool):
                 before=before,
                 after=after,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("update DNS server", device_id, e)
@@ -256,7 +324,14 @@ class DNSDHCPTools(FortiGateTool):
             self._validate_required_params(name=name)
 
             api_client = self._get_device_api(device_id)
-            before = await api_client.get_dns_server_detail(name, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            before = await self._read_audit_detail(
+                api_client.get_dns_server_detail,
+                name,
+                stage="before",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             api_result = await api_client.delete_dns_server(name, vdom=vdom)
             return self._format_write_result(
                 "delete DNS server",
@@ -266,6 +341,7 @@ class DNSDHCPTools(FortiGateTool):
                 vdom=vdom,
                 before=before,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("delete DNS server", device_id, e)
@@ -319,8 +395,15 @@ class DNSDHCPTools(FortiGateTool):
             target_id = self._target_id(
                 server_data, "id", "q_origin_key", "name"
             ) or self._target_id(api_result, "mkey", "id", "q_origin_key", "name")
+            audit_warnings: List[Dict[str, str]] = []
             after = (
-                await api_client.get_dhcp_server_detail(target_id, vdom=vdom)
+                await self._read_audit_detail(
+                    api_client.get_dhcp_server_detail,
+                    target_id,
+                    stage="after",
+                    vdom=vdom,
+                    audit_warnings=audit_warnings,
+                )
                 if target_id
                 else None
             )
@@ -333,6 +416,7 @@ class DNSDHCPTools(FortiGateTool):
                 request_data=server_data,
                 after=after,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("create DHCP server", device_id, e)
@@ -350,11 +434,24 @@ class DNSDHCPTools(FortiGateTool):
             self._validate_required_params(server_id=server_id, server_data=server_data)
 
             api_client = self._get_device_api(device_id)
-            before = await api_client.get_dhcp_server_detail(server_id, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            before = await self._read_audit_detail(
+                api_client.get_dhcp_server_detail,
+                server_id,
+                stage="before",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             api_result = await api_client.update_dhcp_server(
                 server_id, server_data, vdom=vdom
             )
-            after = await api_client.get_dhcp_server_detail(server_id, vdom=vdom)
+            after = await self._read_audit_detail(
+                api_client.get_dhcp_server_detail,
+                server_id,
+                stage="after",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             return self._format_write_result(
                 "update DHCP server",
                 device_id,
@@ -365,6 +462,7 @@ class DNSDHCPTools(FortiGateTool):
                 before=before,
                 after=after,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("update DHCP server", device_id, e)
@@ -381,7 +479,14 @@ class DNSDHCPTools(FortiGateTool):
             self._validate_required_params(server_id=server_id)
 
             api_client = self._get_device_api(device_id)
-            before = await api_client.get_dhcp_server_detail(server_id, vdom=vdom)
+            audit_warnings: List[Dict[str, str]] = []
+            before = await self._read_audit_detail(
+                api_client.get_dhcp_server_detail,
+                server_id,
+                stage="before",
+                vdom=vdom,
+                audit_warnings=audit_warnings,
+            )
             api_result = await api_client.delete_dhcp_server(server_id, vdom=vdom)
             return self._format_write_result(
                 "delete DHCP server",
@@ -391,6 +496,7 @@ class DNSDHCPTools(FortiGateTool):
                 vdom=vdom,
                 before=before,
                 api_result=api_result,
+                audit_warnings=audit_warnings,
             )
         except Exception as e:
             return self._handle_error("delete DHCP server", device_id, e)

@@ -192,11 +192,23 @@ class TestExampleConfig:
     def test_example_config_does_not_embed_credential_placeholders(self):
         """Generated example config should not contain fake credential values."""
         config = create_example_config()
+        rendered = json.dumps(config)
         devices = config["fortigate"]["devices"]
 
-        assert "password" not in devices["default"]
-        assert "api_token" not in devices["default"]
-        assert "api_token" not in devices["backup"]
+        assert "your_password" not in rendered
+        assert "your_api_token_here" not in rendered
+        assert devices["default"]["api_token"] == "${FORTIGATE_API_TOKEN}"
+        assert devices["backup"]["api_token"] == "${FORTIGATE_BACKUP_API_TOKEN}"
+
+    def test_example_config_passes_loader_validation(self, tmp_path):
+        """Generated example config should be structurally usable after writing."""
+        config_path = tmp_path / "fortigate.config.json"
+        config_path.write_text(json.dumps(create_example_config()), encoding="utf-8")
+
+        config = load_config(str(config_path))
+
+        assert config.server.host == "127.0.0.1"
+        assert "default" in config.fortigate.devices
 
 
 class TestLoggingConfig:
