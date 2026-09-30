@@ -515,8 +515,10 @@ class FortiGateTemplates:
             routes = routing_data["results"]
             
             for route in routes:
+                # monitor/router/ipv4 names the prefix ip_mask (cmdb routes use dst)
+                prefix = route.get("ip_mask") or route.get("dst") or "N/A"
                 lines.extend([
-                    f"Route: {route.get('dst', 'N/A')}",
+                    f"Route: {prefix}",
                     f"  Gateway: {route.get('gateway', 'N/A')}",
                     f"  Interface: {route.get('interface', 'N/A')}",
                     f"  Distance: {route.get('distance', 'N/A')}",
