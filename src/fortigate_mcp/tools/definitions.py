@@ -100,7 +100,6 @@ Parameters:
 
 Returns:
 - List of VDOMs with their configuration
-- VDOM status (enabled/disabled)
 - Resource allocation information
 """
 

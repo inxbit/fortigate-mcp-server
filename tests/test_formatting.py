@@ -241,22 +241,24 @@ class TestFortiGateTemplates:
         assert "test_device" in result
     
     def test_vdoms_success(self):
-        """VDOMs template test"""
+        """VDOMs template test: cmdb/system/vdom objects have no enabled key"""
         data = {
             "results": [
                 {
                     "name": "root",
-                    "enabled": True,
-                    "description": "Root VDOM"
+                    "q_origin_key": "root",
+                    "short-name": "root",
+                    "vcluster-id": 0,
+                    "flag": 0,
                 }
             ]
         }
-        
+
         result = FortiGateTemplates.vdoms(data)
-        
-        assert "Virtual Domains" in result
-        assert "root" in result
-        assert "enabled" in result.lower()
+
+        assert result.startswith("Virtual Domains (VDOMs)\n\n")
+        assert "VDOM: root" in result.split("\n")
+        assert "enabled" not in result.lower()
 
 
 class TestFortiGateFormatters:

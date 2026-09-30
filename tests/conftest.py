@@ -60,7 +60,7 @@ def mock_fortigate_api():
     )
 
     mock_api.get_vdoms = AsyncMock(
-        return_value={"results": [{"name": "root", "enabled": True}]}
+        return_value={"results": [{"name": "root", "short-name": "root", "vcluster-id": 0}]}
     )
 
     mock_api.get_dns_settings = AsyncMock(

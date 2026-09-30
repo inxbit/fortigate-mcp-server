@@ -629,10 +629,9 @@ class FortiGateTemplates:
             vdoms = vdoms_data["results"]
             
             for vdom in vdoms:
-                enabled = "Yes" if vdom.get("enabled") else "No"
-                
+                # cmdb/system/vdom objects carry no enabled flag: a listed VDOM exists
                 lines.extend([
-                    f"VDOM: {vdom.get('name', 'Unnamed')} (Enabled: {enabled})",
+                    f"VDOM: {vdom.get('name', 'Unnamed')}",
                 ])
                 
                 if vdom.get("comments"):
