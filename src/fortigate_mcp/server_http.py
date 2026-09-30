@@ -223,6 +223,12 @@ class FortiGateMCPHTTPServer:
         async def discover_vdoms(device_id: str):
             return await self.device_tools.discover_vdoms(device_id)
 
+        @self.mcp.tool(
+            description="Get CPU, memory and session usage and the uptime state"
+        )
+        async def get_resource_usage(device_id: str, vdom: Optional[str] = None):
+            return await self.device_tools.get_resource_usage(device_id, vdom)
+
         @self.mcp.tool(description="Add a new FortiGate device")
         async def add_device(
             device_id: str,

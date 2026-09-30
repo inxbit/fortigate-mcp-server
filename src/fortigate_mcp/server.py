@@ -59,6 +59,7 @@ from .tools.definitions import (
     GET_DNS_SETTINGS_DESC,
     GET_INTERFACE_STATUS_DESC,
     GET_LOAD_BALANCE_HEALTH_CHECK_DETAIL_DESC,
+    GET_RESOURCE_USAGE_DESC,
     GET_ROUTING_TABLE_DESC,
     GET_SERVER_INFO_DESC,
     GET_STATIC_ROUTE_DETAIL_DESC,
@@ -160,6 +161,15 @@ class FortiGateMCPServer:
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
         ):
             return await self.device_tools.discover_vdoms(device_id)
+
+        @self.mcp.tool(description=GET_RESOURCE_USAGE_DESC)
+        async def get_resource_usage(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[
+                Optional[str], Field(description="Virtual Domain", default=None)
+            ] = None,
+        ):
+            return await self.device_tools.get_resource_usage(device_id, vdom)
 
         @self.mcp.tool(description=ADD_DEVICE_DESC)
         async def add_device(
@@ -962,7 +972,7 @@ class FortiGateMCPServer:
                 "port": self.config.server.port,
                 "registered_devices": len(self.fortigate_manager.devices),
                 "available_tools": [
-                    "Device Management (6 tools)",
+                    "Device Management (7 tools)",
                     "Firewall Policy Management (5 tools)",
                     "Network Objects Management (8 tools)",
                     "DNS/DHCP Management (16 tools)",

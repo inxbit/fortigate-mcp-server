@@ -140,6 +140,36 @@ class TestDeviceTools:
         assert "Virtual Domains" in result[0].text
         mock_fortigate_api.get_vdoms.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_get_resource_usage(self, mock_fortigate_api):
+        """CPU, memory and session usage plus the web UI state, as titled JSON."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.device_tools.get_resource_usage("test_device")
+
+        assert result[0].text.startswith("Resource Usage\n\n")
+        payload = _json_payload(result[0])
+        assert set(payload["usage"]) == {"cpu", "mem", "session"}
+        assert payload["usage"]["cpu"]["results"][0]["current"] == 12
+        assert payload["state"]["results"]["utc_last_reboot"] == 1759000000000
+        assert [c.args[0] for c in mock_fortigate_api.get_resource_usage.call_args_list] == [
+            "cpu",
+            "mem",
+            "session",
+        ]
+        mock_fortigate_api.get_web_ui_state.assert_called_once_with(vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_resource_usage_error(self, mock_fortigate_api):
+        """A failed request is the standard error response."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_web_ui_state.side_effect = Exception("boom")
+
+        result = await self.device_tools.get_resource_usage("test_device")
+
+        assert "Error" in result[0].text
+        assert "get resource usage" in result[0].text
+
 
 class TestFirewallTools:
     """Firewall Tools tests - all async."""

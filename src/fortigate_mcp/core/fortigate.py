@@ -222,6 +222,21 @@ class FortiGateAPI:
         """Get system interface information."""
         return await self._make_request("GET", "monitor/system/interface", vdom=vdom)
 
+    async def get_resource_usage(
+        self, resource: str, interval: str = "1-min", vdom: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get current and historical usage of one resource (cpu, mem, session...)."""
+        return await self._make_request(
+            "GET",
+            "monitor/system/resource/usage",
+            params={"resource": resource, "interval": interval},
+            vdom=vdom,
+        )
+
+    async def get_web_ui_state(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get the web UI state (utc_last_reboot and snapshot_utc_time give uptime)."""
+        return await self._make_request("GET", "monitor/web-ui/state", vdom=vdom)
+
     async def get_vdoms(self) -> Dict[str, Any]:
         """Get list of Virtual Domains."""
         return await self._make_request("GET", "cmdb/system/vdom")

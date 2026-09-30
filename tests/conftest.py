@@ -60,6 +60,19 @@ def mock_fortigate_api():
         return_value={"hostname": "FortiGate", "version": "v7.0.0", "status": "ok"}
     )
 
+    mock_api.get_resource_usage = AsyncMock(
+        return_value={"results": [{"current": 12}], "status": "success"}
+    )
+    mock_api.get_web_ui_state = AsyncMock(
+        return_value={
+            "results": {
+                "utc_last_reboot": 1759000000000,
+                "snapshot_utc_time": 1759200000000,
+            },
+            "status": "success",
+        }
+    )
+
     mock_api.get_vdoms = AsyncMock(
         return_value={"results": [{"name": "root", "short-name": "root", "vcluster-id": 0}]}
     )

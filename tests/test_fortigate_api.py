@@ -262,6 +262,42 @@ class TestFortiGateAPIAsync:
             mock.assert_called_once_with("GET", "monitor/system/status", vdom=None)
 
     @pytest.mark.asyncio
+    async def test_get_resource_usage(self):
+        """Test get_resource_usage asks for one resource over a 1-min interval."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": []},
+        ) as mock:
+            await self.api.get_resource_usage("cpu")
+            await self.api.get_resource_usage("session", interval="10-min", vdom="root")
+            mock.assert_any_call(
+                "GET",
+                "monitor/system/resource/usage",
+                params={"resource": "cpu", "interval": "1-min"},
+                vdom=None,
+            )
+            mock.assert_any_call(
+                "GET",
+                "monitor/system/resource/usage",
+                params={"resource": "session", "interval": "10-min"},
+                vdom="root",
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_web_ui_state(self):
+        """Test get_web_ui_state calls correct endpoint."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": {}},
+        ) as mock:
+            await self.api.get_web_ui_state()
+            mock.assert_called_once_with("GET", "monitor/web-ui/state", vdom=None)
+
+    @pytest.mark.asyncio
     async def test_get_vdoms(self):
         """Test get_vdoms calls correct endpoint."""
         with patch.object(

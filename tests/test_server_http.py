@@ -156,6 +156,22 @@ def test_stdio_server_registers_dns_dhcp_write_tools(monkeypatch, tmp_path):
     }.issubset(tool_names)
 
 
+def test_servers_register_get_resource_usage(monkeypatch, tmp_path):
+    """Both servers expose the CPU/memory/sessions/uptime read tool."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(server_stdio, "FastMCP", FakeFastMCP)
+    config_path = str(_write_config(tmp_path))
+
+    for server in (
+        FortiGateMCPHTTPServer(config_path=config_path),
+        server_stdio.FortiGateMCPServer(config_path=config_path),
+    ):
+        params = inspect.signature(server.mcp.functions["get_resource_usage"]).parameters
+        assert list(params) == ["device_id", "vdom"]
+        assert params["vdom"].default is None
+
+
 def test_get_interface_status_name_is_optional(monkeypatch, tmp_path):
     """Both servers accept get_interface_status without an interface name."""
     FakeFastMCP.instances = []

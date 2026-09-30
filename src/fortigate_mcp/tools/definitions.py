@@ -103,6 +103,22 @@ Returns:
 - Resource allocation information
 """
 
+GET_RESOURCE_USAGE_DESC = """
+Get CPU, memory and session usage and the uptime state of a FortiGate device.
+
+This tool queries monitor/system/resource/usage once per resource (cpu, mem,
+session; 1-min interval) and monitor/web-ui/state, and returns the FortiOS
+replies unchanged as JSON.
+
+Parameters:
+- device_id: Identifier of the FortiGate device to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- usage.cpu, usage.mem, usage.session: current value and 1-min history
+- state: web UI state, incl. utc_last_reboot and snapshot_utc_time (uptime)
+"""
+
 # Firewall Policy Tool Descriptions
 LIST_FIREWALL_POLICIES_DESC = """
 List all firewall policies configured on a FortiGate device.
