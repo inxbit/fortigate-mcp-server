@@ -56,10 +56,14 @@ class FortiGateDeviceConfig(BaseModel):
     @classmethod
     def _token_is_a_header_word(cls, v: Optional[str]) -> Optional[str]:
         """The token is sent as a header value: whitespace or a control
-        character fails every request (and h11 echoes the value)."""
-        if v is not None and any(c.isspace() or not c.isprintable() for c in v):
+        character fails every request (and h11 echoes the value), and httpx
+        encodes the value as ASCII (a non-ASCII letter fails the client)."""
+        if v is not None and any(
+            not c.isascii() or c.isspace() or not c.isprintable() for c in v
+        ):
             raise ValueError(
-                "api_token must not contain whitespace or control characters"
+                "api_token must hold visible ASCII characters only"
+                " (no whitespace, control or non-ASCII characters)"
             )
         return v
 

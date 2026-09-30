@@ -169,6 +169,17 @@ class TestDeviceCredentials:
         assert "api_token" in str(exc_info.value)
         assert "synthetic-token" not in str(exc_info.value)
 
+    def test_api_token_outside_visible_ascii_is_rejected(self):
+        """httpx encodes header values as ASCII: an accented letter would
+        fail the client's construction instead of the field."""
+        with pytest.raises(ValidationError) as exc_info:
+            FortiGateDeviceConfig(
+                host="10.0.0.1", api_token="synthetic-tok\u00e9n-for-review"
+            )
+
+        assert "api_token" in str(exc_info.value)
+        assert "tok\u00e9n" not in str(exc_info.value)
+
     def test_load_config_rejects_the_token_without_echoing_it(self, tmp_path):
         config_path = tmp_path / "fortigate.config.json"
         config = {

@@ -144,7 +144,7 @@ Create a configuration file (e.g., `config/config.json`):
 }
 ```
 
-The `api_token` is sent as an `Authorization` header value, so a token with whitespace or a control character (a trailing newline copied from a file is the usual cause) is rejected when the configuration loads or `add_device` runs; the error names the field, never the value.
+The `api_token` is sent as an `Authorization` header value, so a token with a character outside visible ASCII (whitespace, a control character or a non-ASCII letter; a trailing newline copied from a file is the usual cause) is rejected when the configuration loads or `add_device` runs; the error names the field, never the value.
 
 ### Run the Server
 
