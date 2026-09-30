@@ -5,6 +5,7 @@ import inspect
 import json
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
 from src.fortigate_mcp import server as server_stdio
@@ -231,6 +232,33 @@ async def test_health_probe_exception_is_an_error(monkeypatch, tmp_path):
 
     assert health["device_connections"] == {"default": "error"}
     assert health["device_errors"] == {"default": "boom"}
+    assert health["status"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_health_device_errors_never_carry_the_token(monkeypatch, tmp_path):
+    """The real probe runs: h11's illegal-header text (it echoes the
+    Authorization value) is not what health publishes."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(
+        httpx.AsyncClient,
+        "request",
+        AsyncMock(
+            side_effect=httpx.LocalProtocolError(
+                "Illegal header value b'Bearer synthetic-token-for-review\\n'"
+            )
+        ),
+    )
+    server = FortiGateMCPHTTPServer(config_path=str(_write_config(tmp_path)))
+
+    result = await server.mcp.functions["health"]()
+    health = json.loads(result[0].text)
+
+    assert "synthetic-token-for-review" not in result[0].text
+    assert health["device_errors"] == {
+        "default": "Network error: invalid request header: check the device credentials"
+    }
     assert health["status"] == "degraded"
 
 

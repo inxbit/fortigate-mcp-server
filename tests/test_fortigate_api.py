@@ -2,6 +2,7 @@
 FortiGate API tests - async client with connection pooling.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -173,6 +174,47 @@ class TestFortiGateAPIAsync:
                 await self.api._make_request("GET", "monitor/system/status")
 
             assert "Network error" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_make_request_timeout_names_the_error(self):
+        """A timeout stringifies to "": the text names its class instead."""
+        with patch.object(
+            self.api._client,
+            "request",
+            new_callable=AsyncMock,
+            side_effect=httpx.ReadTimeout(""),
+        ):
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                await self.api._make_request("GET", "monitor/system/status")
+
+            assert str(exc_info.value) == "Network error: ReadTimeout"
+
+    @pytest.mark.asyncio
+    async def test_make_request_illegal_header_hides_the_token(self):
+        """h11 refuses a token with a stray newline and echoes the header
+        value: the error text names the fault, never the token."""
+        config = FortiGateDeviceConfig(
+            host="127.0.0.1", api_token="clean-token", verify_ssl=False
+        )
+        api = FortiGateAPI("token_device", config)
+        api._client.headers["Authorization"] = "Bearer synthetic-token-for-review\n"
+        server = await asyncio.start_server(
+            lambda reader, writer: writer.close(), "127.0.0.1", 0
+        )
+        api.base_url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/api/v2"
+        try:
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                await api._make_request("GET", "monitor/system/status")
+        finally:
+            await api.close()
+            server.close()
+            await server.wait_closed()
+
+        assert "synthetic-token-for-review" not in str(exc_info.value)
+        assert str(exc_info.value) == (
+            "Network error: invalid request header: check the device credentials"
+        )
+        assert exc_info.value.__suppress_context__
 
     @pytest.mark.asyncio
     async def test_make_request_vdom_parameter(self):

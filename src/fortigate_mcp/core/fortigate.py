@@ -184,8 +184,16 @@ class FortiGateAPI:
         except httpx.RequestError as e:
             duration_ms = (time.time() - start_time) * 1000
             log_api_call(self.logger, method, endpoint, None, duration_ms)
+            if isinstance(e, httpx.LocalProtocolError):
+                # h11 echoes an illegal header value, i.e. the Authorization
+                # header and its token: keep the text and its chain out
+                raise FortiGateAPIError(
+                    "Network error: invalid request header: check the device credentials",
+                    device_id=self.device_id,
+                ) from None
+            # A timeout stringifies to "": name its class instead
             raise FortiGateAPIError(
-                f"Network error: {str(e)}", device_id=self.device_id
+                f"Network error: {str(e) or type(e).__name__}", device_id=self.device_id
             )
 
     async def check_connection(self) -> Optional[str]:
