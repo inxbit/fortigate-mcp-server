@@ -284,7 +284,7 @@ DNS database, DNS server, and DHCP server writes use CMDB-backed FortiOS resourc
 | `get_static_route_detail` | Get detailed route information |
 | `get_routing_table` | Get the active routing table |
 | `list_interfaces` | List network interfaces |
-| `get_interface_status` | Get interface operational status |
+| `get_interface_status` | Get interface operational status (one interface, or every interface incl. VLAN/aggregate when `interface_name` is omitted or `all`) |
 
 ### Load-Balancing Management (15 tools)
 

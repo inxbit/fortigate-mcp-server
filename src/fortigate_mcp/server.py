@@ -607,7 +607,13 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=GET_INTERFACE_STATUS_DESC)
         async def get_interface_status(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            interface_name: Annotated[str, Field(description="Interface name")],
+            interface_name: Annotated[
+                Optional[str],
+                Field(
+                    description='Interface name; omit or "all" for every interface',
+                    default=None,
+                ),
+            ] = None,
             vdom: Annotated[
                 Optional[str], Field(description="Virtual Domain", default=None)
             ] = None,

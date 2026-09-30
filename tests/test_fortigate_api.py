@@ -478,6 +478,70 @@ class TestFortiGateAPIAsync:
             mock.assert_called_once_with("GET", "cmdb/system/interface", vdom=None)
 
     @pytest.mark.asyncio
+    async def test_get_interface_status_sends_interface_name_param(self):
+        """The name filter is a FortiOS interface_name query parameter."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": {}},
+        ) as mock:
+            await self.api.get_interface_status("wan1")
+            mock.assert_called_once_with(
+                "GET",
+                "monitor/system/interface",
+                params={
+                    "interface_name": "wan1",
+                    "include_vlan": "true",
+                    "include_aggregate": "true",
+                },
+                vdom=None,
+            )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("name", [None, "", "all", "ALL"])
+    async def test_get_interface_status_all_or_none_sends_no_filter(self, name):
+        """No name, or the compatibility value "all", queries every interface."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": {}},
+        ) as mock:
+            await self.api.get_interface_status(name, vdom="root")
+            mock.assert_called_once_with(
+                "GET",
+                "monitor/system/interface",
+                params={"include_vlan": "true", "include_aggregate": "true"},
+                vdom="root",
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_interface_status_filter_reaches_the_wire(self):
+        """httpx replaces a query string embedded in the URL with `params`,
+        so the filter must travel in `params` next to vdom."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "success", "results": {}}
+
+        with patch.object(
+            self.api._client,
+            "request",
+            new_callable=AsyncMock,
+            return_value=mock_response,
+        ) as mock_req:
+            await self.api.get_interface_status("wan1")
+
+        url = mock_req.call_args.kwargs["url"]
+        params = mock_req.call_args.kwargs["params"]
+        assert "?" not in url
+        assert url.endswith("/monitor/system/interface")
+        assert params["interface_name"] == "wan1"
+        assert params["vdom"] == "root"
+        request = httpx.Request("GET", url, params=params)
+        assert request.url.params["interface_name"] == "wan1"
+
+    @pytest.mark.asyncio
     async def test_get_firewall_policies(self):
         """Test get_firewall_policies calls correct endpoint."""
         with patch.object(

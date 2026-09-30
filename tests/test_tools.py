@@ -803,6 +803,19 @@ class TestRoutingTools:
         )
 
     @pytest.mark.asyncio
+    async def test_get_interface_status_without_name(self, mock_fortigate_api):
+        """No interface name asks for every interface and is labelled "all"."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.routing_tools.get_interface_status("test_device")
+
+        assert result[0].text.startswith("Interface Status\n\n")
+        assert _json_payload(result[0])[0] == "all"
+        mock_fortigate_api.get_interface_status.assert_called_once_with(
+            None, vdom=None
+        )
+
+    @pytest.mark.asyncio
     async def test_get_routing_table(self, mock_fortigate_api):
         """Test getting routing table."""
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api

@@ -1,6 +1,7 @@
 """HTTP server startup and security tests."""
 
 import argparse
+import inspect
 import json
 
 from src.fortigate_mcp import server as server_stdio
@@ -17,12 +18,14 @@ class FakeFastMCP:
         self.name = name
         self.kwargs = kwargs
         self.tools = []
+        self.functions = {}
         self.run_calls = []
         FakeFastMCP.instances.append(self)
 
     def tool(self, description=None):
         def decorator(func):
             self.tools.append((func.__name__, description))
+            self.functions[func.__name__] = func
             return func
 
         return decorator
@@ -147,6 +150,22 @@ def test_stdio_server_registers_dns_dhcp_write_tools(monkeypatch, tmp_path):
         "update_dhcp_server",
         "delete_dhcp_server",
     }.issubset(tool_names)
+
+
+def test_get_interface_status_name_is_optional(monkeypatch, tmp_path):
+    """Both servers accept get_interface_status without an interface name."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(server_stdio, "FastMCP", FakeFastMCP)
+    config_path = str(_write_config(tmp_path))
+
+    for server in (
+        FortiGateMCPHTTPServer(config_path=config_path),
+        server_stdio.FortiGateMCPServer(config_path=config_path),
+    ):
+        func = server.mcp.functions["get_interface_status"]
+        param = inspect.signature(func).parameters["interface_name"]
+        assert param.default is None
 
 
 def test_http_server_enables_auth_and_host_protection(monkeypatch, tmp_path):

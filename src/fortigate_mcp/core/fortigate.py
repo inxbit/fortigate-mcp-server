@@ -395,11 +395,20 @@ class FortiGateAPI:
         return await self._make_request("GET", "cmdb/system/interface", vdom=vdom)
 
     async def get_interface_status(
-        self, interface_name: str, vdom: Optional[str] = None
+        self, interface_name: Optional[str] = None, vdom: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Get specific interface status."""
+        """Get interface runtime status (link, speed, counters).
+
+        The filter must travel in ``params``: httpx replaces a query string
+        embedded in the endpoint with ``params``. FortiOS names it
+        ``interface_name``. No name, or "all" (kept for existing clients),
+        sends no filter and returns every monitored interface.
+        """
+        params = {"include_vlan": "true", "include_aggregate": "true"}
+        if interface_name and interface_name.lower() != "all":
+            params["interface_name"] = interface_name
         return await self._make_request(
-            "GET", f"monitor/system/interface?interface={interface_name}", vdom=vdom
+            "GET", "monitor/system/interface", params=params, vdom=vdom
         )
 
     # Firewall policy endpoints

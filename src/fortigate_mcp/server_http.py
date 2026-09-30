@@ -486,9 +486,16 @@ class FortiGateMCPHTTPServer:
         async def list_interfaces(device_id: str, vdom: Optional[str] = None):
             return await self.routing_tools.list_interfaces(device_id, vdom)
 
-        @self.mcp.tool(description="Get interface status")
+        @self.mcp.tool(
+            description=(
+                "Get interface status; omit interface_name (or pass \"all\") "
+                "for every interface"
+            )
+        )
         async def get_interface_status(
-            device_id: str, interface_name: str, vdom: Optional[str] = None
+            device_id: str,
+            interface_name: Optional[str] = None,
+            vdom: Optional[str] = None,
         ):
             return await self.routing_tools.get_interface_status(
                 device_id, interface_name, vdom

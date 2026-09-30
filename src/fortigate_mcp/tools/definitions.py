@@ -758,14 +758,16 @@ Returns:
 """
 
 GET_INTERFACE_STATUS_DESC = """
-Get detailed status information for a specific network interface on a FortiGate device.
+Get runtime status information for network interfaces on a FortiGate device.
 
-This tool retrieves real-time status and statistics for a single interface,
-including link state, speed, traffic counters, and error counts.
+This tool retrieves real-time status and statistics for one interface, or for
+every monitored interface (VLAN and aggregate interfaces included), including
+link state, speed, traffic counters, and error counts.
 
 Parameters:
 - device_id: Identifier of the FortiGate device
-- interface_name: Name of the interface to query
+- interface_name: Name of the interface to query (optional; omit it, or pass
+  "all", for every interface)
 - vdom: Virtual Domain name (optional, uses device default)
 
 Returns:

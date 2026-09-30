@@ -74,15 +74,15 @@ class RoutingTools(FortiGateTool):
         except Exception as e:
             return self._handle_error("list interfaces", device_id, e)
 
-    async def get_interface_status(self, device_id: str, interface_name: str, vdom: Optional[str] = None) -> List[Content]:
-        """Get interface status."""
+    async def get_interface_status(self, device_id: str, interface_name: Optional[str] = None,
+                                   vdom: Optional[str] = None) -> List[Content]:
+        """Get interface status (every interface when no name or "all" is given)."""
         try:
             self._validate_device_exists(device_id)
-            self._validate_required_params(interface_name=interface_name)
 
             api_client = self._get_device_api(device_id)
             interface_data = await api_client.get_interface_status(interface_name, vdom=vdom)
-            return self._format_response((interface_name, interface_data), "interface_status")
+            return self._format_response((interface_name or "all", interface_data), "interface_status")
         except Exception as e:
             return self._handle_error("get interface status", device_id, e)
 
