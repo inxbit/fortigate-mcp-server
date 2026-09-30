@@ -100,6 +100,18 @@ class TestDeviceTools:
         assert "new_device" in self.fortigate_manager.devices
 
     @pytest.mark.asyncio
+    async def test_add_device_rejects_a_token_without_echoing_it(self):
+        """A token with a stray newline is refused and not echoed back."""
+        result = await self.device_tools.add_device(
+            device_id="new_device",
+            host="192.168.1.1",
+            api_token="synthetic-token-for-review\n",
+        )
+
+        assert "synthetic-token-for-review" not in result[0].text
+        assert "new_device" not in self.fortigate_manager.devices
+
+    @pytest.mark.asyncio
     async def test_add_device_duplicate(self, mock_fortigate_api):
         """Test adding a device that already exists."""
         self.fortigate_manager.devices["existing"] = mock_fortigate_api

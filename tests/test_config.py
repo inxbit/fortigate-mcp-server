@@ -148,6 +148,60 @@ class TestFortiGateDeviceConfig:
         assert config.timeout == 60
 
 
+class TestDeviceCredentials:
+    """The api_token travels as a header value: whitespace or a control
+    character fails every request, and no error may echo the token."""
+
+    @pytest.mark.parametrize(
+        "token",
+        [
+            "synthetic-token-for-review\n",
+            " synthetic-token-for-review",
+            "synthetic-token for-review",
+            "synthetic-token-for-review\t",
+            "synthetic-token\x00for-review",
+        ],
+    )
+    def test_api_token_with_whitespace_or_control_is_rejected(self, token):
+        with pytest.raises(ValidationError) as exc_info:
+            FortiGateDeviceConfig(host="10.0.0.1", api_token=token)
+
+        assert "api_token" in str(exc_info.value)
+        assert "synthetic-token" not in str(exc_info.value)
+
+    def test_load_config_rejects_the_token_without_echoing_it(self, tmp_path):
+        config_path = tmp_path / "fortigate.config.json"
+        config = {
+            "fortigate": {
+                "devices": {
+                    "fw1": {
+                        "host": "10.0.0.1",
+                        "api_token": "synthetic-token-for-review\n",
+                    }
+                }
+            }
+        }
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+
+        with pytest.raises(ValueError) as exc_info:
+            load_config(str(config_path))
+
+        assert "api_token" in str(exc_info.value)
+        assert "synthetic-token-for-review" not in str(exc_info.value)
+
+    def test_clean_token_and_password_with_a_space_are_accepted(self):
+        """Basic auth base64-encodes the pair: a space in a password is valid."""
+        config = FortiGateDeviceConfig(
+            host="10.0.0.1",
+            api_token="AbC123synthetic",
+            username="admin",
+            password="pass phrase",
+        )
+
+        assert config.api_token == "AbC123synthetic"
+        assert config.password == "pass phrase"
+
+
 class TestAuthConfig:
     """Tests for authentication configuration model."""
 
