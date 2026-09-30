@@ -312,7 +312,7 @@ DNS database, DNS server, and DHCP server writes use CMDB-backed FortiOS resourc
 |------|-------------|
 | `health_check` | Server health and device connectivity status |
 | `get_server_info` | Server version and configuration info |
-| `health` | HTTP server health and device connectivity status |
+| `health` | HTTP server health and device connectivity status (`device_errors` carries the reason a device did not answer; any such device makes the status `degraded`) |
 | `test_connection` | HTTP server aggregate FortiGate connection test |
 
 ## Write Operation Contract

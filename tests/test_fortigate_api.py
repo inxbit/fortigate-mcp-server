@@ -219,6 +219,36 @@ class TestFortiGateAPIAsync:
             assert result is False
 
     @pytest.mark.asyncio
+    async def test_check_connection_returns_the_error_text(self):
+        """check_connection keeps the reason test_connection used to swallow."""
+        dns_error = FortiGateAPIError(
+            "Network error: [Errno -3] Temporary failure in name resolution",
+            device_id="test_device",
+        )
+        with patch.object(
+            self.api,
+            "get_system_status",
+            new_callable=AsyncMock,
+            side_effect=dns_error,
+        ):
+            assert await self.api.check_connection() == (
+                "Network error: [Errno -3] Temporary failure in name resolution"
+            )
+            assert await self.api.test_connection() is False
+
+    @pytest.mark.asyncio
+    async def test_check_connection_success_is_none(self):
+        """A device that answers has no error."""
+        with patch.object(
+            self.api,
+            "get_system_status",
+            new_callable=AsyncMock,
+            return_value={"status": "success"},
+        ):
+            assert await self.api.check_connection() is None
+            assert await self.api.test_connection() is True
+
+    @pytest.mark.asyncio
     async def test_get_system_status(self):
         """Test get_system_status calls correct endpoint."""
         with patch.object(

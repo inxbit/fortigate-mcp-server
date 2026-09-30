@@ -747,20 +747,25 @@ class FortiGateMCPHTTPServer:
                 "timestamp": datetime.now().isoformat(),
                 "registered_devices": len(self.fortigate_manager.devices),
                 "device_connections": {},
+                "device_errors": {},
             }
 
-            # Test device connections
+            # Test device connections: a device that did not answer keeps its
+            # error text in device_errors and degrades the status
             try:
                 devices = self.fortigate_manager.list_devices()
                 for device_id in devices:
                     try:
                         api_client = self.fortigate_manager.get_device(device_id)
-                        success = await api_client.test_connection()
+                        error = await api_client.check_connection()
                         health_info["device_connections"][device_id] = (
-                            "connected" if success else "disconnected"
+                            "connected" if error is None else "disconnected"
                         )
                     except Exception as e:
                         health_info["device_connections"][device_id] = "error"
+                        error = str(e)
+                    if error is not None:
+                        health_info["device_errors"][device_id] = error
                         health_info["status"] = "degraded"
             except Exception as e:
                 health_info["status"] = "error"

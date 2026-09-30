@@ -53,6 +53,7 @@ def mock_fortigate_api():
 
     # All API methods are now async - use AsyncMock
     mock_api.test_connection = AsyncMock(return_value=True)
+    mock_api.check_connection = AsyncMock(return_value=None)
     mock_api.close = AsyncMock()
 
     mock_api.get_system_status = AsyncMock(

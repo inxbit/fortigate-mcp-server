@@ -3,9 +3,13 @@
 import argparse
 import inspect
 import json
+from unittest.mock import AsyncMock
+
+import pytest
 
 from src.fortigate_mcp import server as server_stdio
 from src.fortigate_mcp import server_http
+from src.fortigate_mcp.core.fortigate import FortiGateAPI
 from src.fortigate_mcp.server_http import FortiGateMCPHTTPServer
 
 
@@ -166,6 +170,52 @@ def test_get_interface_status_name_is_optional(monkeypatch, tmp_path):
         func = server.mcp.functions["get_interface_status"]
         param = inspect.signature(func).parameters["interface_name"]
         assert param.default is None
+
+
+async def _health(monkeypatch, tmp_path, probe_error=None, probe_raises=None):
+    """Run the HTTP health tool with the device probe mocked (no network)."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(
+        FortiGateAPI,
+        "check_connection",
+        AsyncMock(return_value=probe_error, side_effect=probe_raises),
+    )
+    server = FortiGateMCPHTTPServer(config_path=str(_write_config(tmp_path)))
+    result = await server.mcp.functions["health"]()
+    return json.loads(result[0].text)
+
+
+@pytest.mark.asyncio
+async def test_health_reports_the_probe_error_and_degrades(monkeypatch, tmp_path):
+    """A device that did not answer carries its error text and degrades the status."""
+    dns_error = "Network error: [Errno -3] Temporary failure in name resolution"
+
+    health = await _health(monkeypatch, tmp_path, dns_error)
+
+    assert health["device_connections"] == {"default": "disconnected"}
+    assert health["device_errors"] == {"default": dns_error}
+    assert health["status"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_health_all_connected_stays_ok(monkeypatch, tmp_path):
+    """Connected devices keep status ok and an empty device_errors map."""
+    health = await _health(monkeypatch, tmp_path, None)
+
+    assert health["device_connections"] == {"default": "connected"}
+    assert health["device_errors"] == {}
+    assert health["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_health_probe_exception_is_an_error(monkeypatch, tmp_path):
+    """A probe that raises reads "error" and still reports its text."""
+    health = await _health(monkeypatch, tmp_path, probe_raises=RuntimeError("boom"))
+
+    assert health["device_connections"] == {"default": "error"}
+    assert health["device_errors"] == {"default": "boom"}
+    assert health["status"] == "degraded"
 
 
 def test_http_server_enables_auth_and_host_protection(monkeypatch, tmp_path):

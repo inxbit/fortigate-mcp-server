@@ -188,18 +188,26 @@ class FortiGateAPI:
                 f"Network error: {str(e)}", device_id=self.device_id
             )
 
+    async def check_connection(self) -> Optional[str]:
+        """Probe the device with one system status request.
+
+        Returns:
+            None if the device answered, otherwise the error text
+        """
+        try:
+            await self.get_system_status()
+            return None
+        except Exception as e:
+            self.logger.error(f"Connection test failed: {e}")
+            return str(e)
+
     async def test_connection(self) -> bool:
         """Test connection to FortiGate device.
 
         Returns:
             True if connection successful, False otherwise
         """
-        try:
-            await self.get_system_status()
-            return True
-        except Exception as e:
-            self.logger.error(f"Connection test failed: {e}")
-            return False
+        return await self.check_connection() is None
 
     # System endpoints
     async def get_system_status(self, vdom: Optional[str] = None) -> Dict[str, Any]:
