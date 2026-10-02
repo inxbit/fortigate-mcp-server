@@ -218,7 +218,7 @@ When using a FortiGate certificate issued for a DNS name, configure the device `
 | `add_device` | Register a new FortiGate device |
 | `remove_device` | Remove a registered device |
 | `discover_vdoms` | Discover Virtual Domains on a device |
-| `get_resource_usage` | CPU, memory and session usage plus uptime state (raw FortiOS replies as JSON) |
+| `get_resource_usage` | CPU, memory and session usage plus uptime (FortiOS replies as JSON; the web UI state keeps only `utc_last_reboot` and `snapshot_utc_time`) |
 
 ### Firewall Policy Management (5 tools)
 

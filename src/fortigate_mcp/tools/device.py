@@ -70,7 +70,8 @@ class DeviceTools(FortiGateTool):
         Returns:
             List of Content objects with the FortiOS replies as titled JSON:
             {"usage": {"cpu"|"mem"|"session": <resource/usage reply>},
-            "state": <web-ui/state reply>}
+            "state": <web-ui/state reply, results cut to utc_last_reboot
+            and snapshot_utc_time>}
         """
         try:
             self._validate_device_exists(device_id)
@@ -79,6 +80,12 @@ class DeviceTools(FortiGateTool):
             for resource in ("cpu", "mem", "session"):
                 usage[resource] = await api_client.get_resource_usage(resource, vdom=vdom)
             state = await api_client.get_web_ui_state(vdom=vdom)
+            # Keep only the uptime fields: the web UI state also carries the
+            # API admin's name, profile and cookie names
+            results = state.get("results") or {}
+            state["results"] = {
+                k: results[k] for k in ("utc_last_reboot", "snapshot_utc_time") if k in results
+            }
             return self._format_response({"usage": usage, "state": state}, "resource_usage")
         except Exception as e:
             return self._handle_error("get resource usage", device_id, e)
