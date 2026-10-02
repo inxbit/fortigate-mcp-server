@@ -1,10 +1,16 @@
 """HTTP server startup and security tests."""
 
 import argparse
+import inspect
 import json
+from unittest.mock import AsyncMock
+
+import httpx
+import pytest
 
 from src.fortigate_mcp import server as server_stdio
 from src.fortigate_mcp import server_http
+from src.fortigate_mcp.core.fortigate import FortiGateAPI
 from src.fortigate_mcp.server_http import FortiGateMCPHTTPServer
 
 
@@ -17,12 +23,14 @@ class FakeFastMCP:
         self.name = name
         self.kwargs = kwargs
         self.tools = []
+        self.functions = {}
         self.run_calls = []
         FakeFastMCP.instances.append(self)
 
     def tool(self, description=None):
         def decorator(func):
             self.tools.append((func.__name__, description))
+            self.functions[func.__name__] = func
             return func
 
         return decorator
@@ -147,6 +155,111 @@ def test_stdio_server_registers_dns_dhcp_write_tools(monkeypatch, tmp_path):
         "update_dhcp_server",
         "delete_dhcp_server",
     }.issubset(tool_names)
+
+
+def test_servers_register_get_resource_usage(monkeypatch, tmp_path):
+    """Both servers expose the CPU/memory/sessions/uptime read tool."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(server_stdio, "FastMCP", FakeFastMCP)
+    config_path = str(_write_config(tmp_path))
+
+    for server in (
+        FortiGateMCPHTTPServer(config_path=config_path),
+        server_stdio.FortiGateMCPServer(config_path=config_path),
+    ):
+        params = inspect.signature(server.mcp.functions["get_resource_usage"]).parameters
+        assert list(params) == ["device_id", "vdom"]
+        assert params["vdom"].default is None
+
+
+def test_get_interface_status_name_is_optional(monkeypatch, tmp_path):
+    """Both servers accept get_interface_status without an interface name."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(server_stdio, "FastMCP", FakeFastMCP)
+    config_path = str(_write_config(tmp_path))
+
+    for server in (
+        FortiGateMCPHTTPServer(config_path=config_path),
+        server_stdio.FortiGateMCPServer(config_path=config_path),
+    ):
+        func = server.mcp.functions["get_interface_status"]
+        param = inspect.signature(func).parameters["interface_name"]
+        assert param.default is None
+
+
+async def _health(monkeypatch, tmp_path, probe_error=None, probe_raises=None):
+    """Run the HTTP health tool with the device probe mocked (no network)."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(
+        FortiGateAPI,
+        "check_connection",
+        AsyncMock(return_value=probe_error, side_effect=probe_raises),
+    )
+    server = FortiGateMCPHTTPServer(config_path=str(_write_config(tmp_path)))
+    result = await server.mcp.functions["health"]()
+    return json.loads(result[0].text)
+
+
+@pytest.mark.asyncio
+async def test_health_reports_the_probe_error_and_degrades(monkeypatch, tmp_path):
+    """A device that did not answer carries its error text and degrades the status."""
+    dns_error = "Network error: [Errno -3] Temporary failure in name resolution"
+
+    health = await _health(monkeypatch, tmp_path, dns_error)
+
+    assert health["device_connections"] == {"default": "disconnected"}
+    assert health["device_errors"] == {"default": dns_error}
+    assert health["status"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_health_all_connected_stays_ok(monkeypatch, tmp_path):
+    """Connected devices keep status ok and an empty device_errors map."""
+    health = await _health(monkeypatch, tmp_path, None)
+
+    assert health["device_connections"] == {"default": "connected"}
+    assert health["device_errors"] == {}
+    assert health["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_health_probe_exception_is_an_error(monkeypatch, tmp_path):
+    """A probe that raises reads "error" and still reports its text."""
+    health = await _health(monkeypatch, tmp_path, probe_raises=RuntimeError("boom"))
+
+    assert health["device_connections"] == {"default": "error"}
+    assert health["device_errors"] == {"default": "boom"}
+    assert health["status"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_health_device_errors_never_carry_the_token(monkeypatch, tmp_path):
+    """The real probe runs: h11's illegal-header text (it echoes the
+    Authorization value) is not what health publishes."""
+    FakeFastMCP.instances = []
+    monkeypatch.setattr(server_http, "FastMCP", FakeFastMCP)
+    monkeypatch.setattr(
+        httpx.AsyncClient,
+        "request",
+        AsyncMock(
+            side_effect=httpx.LocalProtocolError(
+                "Illegal header value b'Bearer synthetic-token-for-review\\n'"
+            )
+        ),
+    )
+    server = FortiGateMCPHTTPServer(config_path=str(_write_config(tmp_path)))
+
+    result = await server.mcp.functions["health"]()
+    health = json.loads(result[0].text)
+
+    assert "synthetic-token-for-review" not in result[0].text
+    assert health["device_errors"] == {
+        "default": "Network error: invalid request header: check the device credentials"
+    }
+    assert health["status"] == "degraded"
 
 
 def test_http_server_enables_auth_and_host_protection(monkeypatch, tmp_path):

@@ -223,6 +223,12 @@ class FortiGateMCPHTTPServer:
         async def discover_vdoms(device_id: str):
             return await self.device_tools.discover_vdoms(device_id)
 
+        @self.mcp.tool(
+            description="Get CPU, memory and session usage and the uptime state"
+        )
+        async def get_resource_usage(device_id: str, vdom: Optional[str] = None):
+            return await self.device_tools.get_resource_usage(device_id, vdom)
+
         @self.mcp.tool(description="Add a new FortiGate device")
         async def add_device(
             device_id: str,
@@ -486,9 +492,16 @@ class FortiGateMCPHTTPServer:
         async def list_interfaces(device_id: str, vdom: Optional[str] = None):
             return await self.routing_tools.list_interfaces(device_id, vdom)
 
-        @self.mcp.tool(description="Get interface status")
+        @self.mcp.tool(
+            description=(
+                "Get interface status; omit interface_name (or pass \"all\") "
+                "for every interface"
+            )
+        )
         async def get_interface_status(
-            device_id: str, interface_name: str, vdom: Optional[str] = None
+            device_id: str,
+            interface_name: Optional[str] = None,
+            vdom: Optional[str] = None,
         ):
             return await self.routing_tools.get_interface_status(
                 device_id, interface_name, vdom
@@ -740,20 +753,25 @@ class FortiGateMCPHTTPServer:
                 "timestamp": datetime.now().isoformat(),
                 "registered_devices": len(self.fortigate_manager.devices),
                 "device_connections": {},
+                "device_errors": {},
             }
 
-            # Test device connections
+            # Test device connections: a device that did not answer keeps its
+            # error text in device_errors and degrades the status
             try:
                 devices = self.fortigate_manager.list_devices()
                 for device_id in devices:
                     try:
                         api_client = self.fortigate_manager.get_device(device_id)
-                        success = await api_client.test_connection()
+                        error = await api_client.check_connection()
                         health_info["device_connections"][device_id] = (
-                            "connected" if success else "disconnected"
+                            "connected" if error is None else "disconnected"
                         )
                     except Exception as e:
                         health_info["device_connections"][device_id] = "error"
+                        error = str(e)
+                    if error is not None:
+                        health_info["device_errors"][device_id] = error
                         health_info["status"] = "degraded"
             except Exception as e:
                 health_info["status"] = "error"

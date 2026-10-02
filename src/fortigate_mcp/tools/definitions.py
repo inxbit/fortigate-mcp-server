@@ -100,8 +100,23 @@ Parameters:
 
 Returns:
 - List of VDOMs with their configuration
-- VDOM status (enabled/disabled)
 - Resource allocation information
+"""
+
+GET_RESOURCE_USAGE_DESC = """
+Get CPU, memory and session usage and the uptime state of a FortiGate device.
+
+This tool queries monitor/system/resource/usage once per resource (cpu, mem,
+session; 1-min interval) and monitor/web-ui/state, and returns the FortiOS
+replies unchanged as JSON.
+
+Parameters:
+- device_id: Identifier of the FortiGate device to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- usage.cpu, usage.mem, usage.session: current value and 1-min history
+- state: web UI state, incl. utc_last_reboot and snapshot_utc_time (uptime)
 """
 
 # Firewall Policy Tool Descriptions
@@ -758,14 +773,16 @@ Returns:
 """
 
 GET_INTERFACE_STATUS_DESC = """
-Get detailed status information for a specific network interface on a FortiGate device.
+Get runtime status information for network interfaces on a FortiGate device.
 
-This tool retrieves real-time status and statistics for a single interface,
-including link state, speed, traffic counters, and error counts.
+This tool retrieves real-time status and statistics for one interface, or for
+every monitored interface (VLAN and aggregate interfaces included), including
+link state, speed, traffic counters, and error counts.
 
 Parameters:
 - device_id: Identifier of the FortiGate device
-- interface_name: Name of the interface to query
+- interface_name: Name of the interface to query (optional; omit it, or pass
+  "all", for every interface)
 - vdom: Virtual Domain name (optional, uses device default)
 
 Returns:

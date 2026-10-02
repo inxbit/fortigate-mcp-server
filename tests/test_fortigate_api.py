@@ -2,6 +2,8 @@
 FortiGate API tests - async client with connection pooling.
 """
 
+import asyncio
+import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -175,6 +177,47 @@ class TestFortiGateAPIAsync:
             assert "Network error" in str(exc_info.value)
 
     @pytest.mark.asyncio
+    async def test_make_request_timeout_names_the_error(self):
+        """A timeout stringifies to "": the text names its class instead."""
+        with patch.object(
+            self.api._client,
+            "request",
+            new_callable=AsyncMock,
+            side_effect=httpx.ReadTimeout(""),
+        ):
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                await self.api._make_request("GET", "monitor/system/status")
+
+            assert str(exc_info.value) == "Network error: ReadTimeout"
+
+    @pytest.mark.asyncio
+    async def test_make_request_illegal_header_hides_the_token(self):
+        """h11 refuses a token with a stray newline and echoes the header
+        value: the error text names the fault, never the token."""
+        config = FortiGateDeviceConfig(
+            host="127.0.0.1", api_token="clean-token", verify_ssl=False
+        )
+        api = FortiGateAPI("token_device", config)
+        api._client.headers["Authorization"] = "Bearer synthetic-token-for-review\n"
+        server = await asyncio.start_server(
+            lambda reader, writer: writer.close(), "127.0.0.1", 0
+        )
+        api.base_url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/api/v2"
+        try:
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                await api._make_request("GET", "monitor/system/status")
+        finally:
+            await api.close()
+            server.close()
+            await server.wait_closed()
+
+        assert "synthetic-token-for-review" not in str(exc_info.value)
+        assert str(exc_info.value) == (
+            "Network error: invalid request header: check the device credentials"
+        )
+        assert exc_info.value.__suppress_context__
+
+    @pytest.mark.asyncio
     async def test_make_request_vdom_parameter(self):
         """Test that vdom parameter is passed correctly."""
         mock_response = MagicMock()
@@ -219,6 +262,36 @@ class TestFortiGateAPIAsync:
             assert result is False
 
     @pytest.mark.asyncio
+    async def test_check_connection_returns_the_error_text(self):
+        """check_connection keeps the reason test_connection used to swallow."""
+        dns_error = FortiGateAPIError(
+            "Network error: [Errno -3] Temporary failure in name resolution",
+            device_id="test_device",
+        )
+        with patch.object(
+            self.api,
+            "get_system_status",
+            new_callable=AsyncMock,
+            side_effect=dns_error,
+        ):
+            assert await self.api.check_connection() == (
+                "Network error: [Errno -3] Temporary failure in name resolution"
+            )
+            assert await self.api.test_connection() is False
+
+    @pytest.mark.asyncio
+    async def test_check_connection_success_is_none(self):
+        """A device that answers has no error."""
+        with patch.object(
+            self.api,
+            "get_system_status",
+            new_callable=AsyncMock,
+            return_value={"status": "success"},
+        ):
+            assert await self.api.check_connection() is None
+            assert await self.api.test_connection() is True
+
+    @pytest.mark.asyncio
     async def test_get_system_status(self):
         """Test get_system_status calls correct endpoint."""
         with patch.object(
@@ -230,6 +303,43 @@ class TestFortiGateAPIAsync:
             result = await self.api.get_system_status()
             assert result == {"hostname": "FG"}
             mock.assert_called_once_with("GET", "monitor/system/status", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_resource_usage(self):
+        """Test get_resource_usage asks for one resource over a 1-min interval."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": []},
+        ) as mock:
+            await self.api.get_resource_usage("cpu")
+            await self.api.get_resource_usage("session", vdom="root")
+            mock.assert_any_call(
+                "GET",
+                "monitor/system/resource/usage",
+                params={"resource": "cpu", "interval": "1-min"},
+                vdom=None,
+            )
+            mock.assert_any_call(
+                "GET",
+                "monitor/system/resource/usage",
+                params={"resource": "session", "interval": "1-min"},
+                vdom="root",
+            )
+        assert "interval" not in inspect.signature(self.api.get_resource_usage).parameters
+
+    @pytest.mark.asyncio
+    async def test_get_web_ui_state(self):
+        """Test get_web_ui_state calls correct endpoint."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": {}},
+        ) as mock:
+            await self.api.get_web_ui_state()
+            mock.assert_called_once_with("GET", "monitor/web-ui/state", vdom=None)
 
     @pytest.mark.asyncio
     async def test_get_vdoms(self):
@@ -476,6 +586,70 @@ class TestFortiGateAPIAsync:
         ) as mock:
             await self.api.get_interfaces()
             mock.assert_called_once_with("GET", "cmdb/system/interface", vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_interface_status_sends_interface_name_param(self):
+        """The name filter is a FortiOS interface_name query parameter."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": {}},
+        ) as mock:
+            await self.api.get_interface_status("wan1")
+            mock.assert_called_once_with(
+                "GET",
+                "monitor/system/interface",
+                params={
+                    "interface_name": "wan1",
+                    "include_vlan": "true",
+                    "include_aggregate": "true",
+                },
+                vdom=None,
+            )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("name", [None, "", "all", "ALL"])
+    async def test_get_interface_status_all_or_none_sends_no_filter(self, name):
+        """No name, or the compatibility value "all", queries every interface."""
+        with patch.object(
+            self.api,
+            "_make_request",
+            new_callable=AsyncMock,
+            return_value={"results": {}},
+        ) as mock:
+            await self.api.get_interface_status(name, vdom="root")
+            mock.assert_called_once_with(
+                "GET",
+                "monitor/system/interface",
+                params={"include_vlan": "true", "include_aggregate": "true"},
+                vdom="root",
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_interface_status_filter_reaches_the_wire(self):
+        """httpx replaces a query string embedded in the URL with `params`,
+        so the filter must travel in `params` next to vdom."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "success", "results": {}}
+
+        with patch.object(
+            self.api._client,
+            "request",
+            new_callable=AsyncMock,
+            return_value=mock_response,
+        ) as mock_req:
+            await self.api.get_interface_status("wan1")
+
+        url = mock_req.call_args.kwargs["url"]
+        params = mock_req.call_args.kwargs["params"]
+        assert "?" not in url
+        assert url.endswith("/monitor/system/interface")
+        assert params["interface_name"] == "wan1"
+        assert params["vdom"] == "root"
+        request = httpx.Request("GET", url, params=params)
+        assert request.url.params["interface_name"] == "wan1"
 
     @pytest.mark.asyncio
     async def test_get_firewall_policies(self):

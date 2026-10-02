@@ -100,6 +100,18 @@ class TestDeviceTools:
         assert "new_device" in self.fortigate_manager.devices
 
     @pytest.mark.asyncio
+    async def test_add_device_rejects_a_token_without_echoing_it(self):
+        """A token with a stray newline is refused and not echoed back."""
+        result = await self.device_tools.add_device(
+            device_id="new_device",
+            host="192.168.1.1",
+            api_token="synthetic-token-for-review\n",
+        )
+
+        assert "synthetic-token-for-review" not in result[0].text
+        assert "new_device" not in self.fortigate_manager.devices
+
+    @pytest.mark.asyncio
     async def test_add_device_duplicate(self, mock_fortigate_api):
         """Test adding a device that already exists."""
         self.fortigate_manager.devices["existing"] = mock_fortigate_api
@@ -139,6 +151,36 @@ class TestDeviceTools:
 
         assert "Virtual Domains" in result[0].text
         mock_fortigate_api.get_vdoms.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_resource_usage(self, mock_fortigate_api):
+        """CPU, memory and session usage plus the web UI state, as titled JSON."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.device_tools.get_resource_usage("test_device")
+
+        assert result[0].text.startswith("Resource Usage\n\n")
+        payload = _json_payload(result[0])
+        assert set(payload["usage"]) == {"cpu", "mem", "session"}
+        assert payload["usage"]["cpu"]["results"][0]["current"] == 12
+        assert payload["state"]["results"]["utc_last_reboot"] == 1759000000000
+        assert [c.args[0] for c in mock_fortigate_api.get_resource_usage.call_args_list] == [
+            "cpu",
+            "mem",
+            "session",
+        ]
+        mock_fortigate_api.get_web_ui_state.assert_called_once_with(vdom=None)
+
+    @pytest.mark.asyncio
+    async def test_get_resource_usage_error(self, mock_fortigate_api):
+        """A failed request is the standard error response."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+        mock_fortigate_api.get_web_ui_state.side_effect = Exception("boom")
+
+        result = await self.device_tools.get_resource_usage("test_device")
+
+        assert "Error" in result[0].text
+        assert "get resource usage" in result[0].text
 
 
 class TestFirewallTools:
@@ -800,6 +842,19 @@ class TestRoutingTools:
         assert "port1" in result[0].text
         mock_fortigate_api.get_interface_status.assert_called_once_with(
             "port1", vdom=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_interface_status_without_name(self, mock_fortigate_api):
+        """No interface name asks for every interface and is labelled "all"."""
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.routing_tools.get_interface_status("test_device")
+
+        assert result[0].text.startswith("Interface Status\n\n")
+        assert _json_payload(result[0])[0] == "all"
+        mock_fortigate_api.get_interface_status.assert_called_once_with(
+            None, vdom=None
         )
 
     @pytest.mark.asyncio

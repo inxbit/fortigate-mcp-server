@@ -60,6 +60,29 @@ class DeviceTools(FortiGateTool):
         except Exception as e:
             return self._format_connection_test(device_id, False, str(e))
 
+    async def get_resource_usage(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
+        """Get CPU, memory and session usage and the uptime state of a device.
+
+        Args:
+            device_id: Target device identifier
+            vdom: Virtual Domain (uses device default if not specified)
+
+        Returns:
+            List of Content objects with the FortiOS replies as titled JSON:
+            {"usage": {"cpu"|"mem"|"session": <resource/usage reply>},
+            "state": <web-ui/state reply>}
+        """
+        try:
+            self._validate_device_exists(device_id)
+            api_client = self._get_device_api(device_id)
+            usage = {}
+            for resource in ("cpu", "mem", "session"):
+                usage[resource] = await api_client.get_resource_usage(resource, vdom=vdom)
+            state = await api_client.get_web_ui_state(vdom=vdom)
+            return self._format_response({"usage": usage, "state": state}, "resource_usage")
+        except Exception as e:
+            return self._handle_error("get resource usage", device_id, e)
+
     async def discover_vdoms(self, device_id: str) -> List[Content]:
         """Discover VDOMs on a FortiGate device.
 

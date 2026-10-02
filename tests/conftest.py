@@ -53,14 +53,28 @@ def mock_fortigate_api():
 
     # All API methods are now async - use AsyncMock
     mock_api.test_connection = AsyncMock(return_value=True)
+    mock_api.check_connection = AsyncMock(return_value=None)
     mock_api.close = AsyncMock()
 
     mock_api.get_system_status = AsyncMock(
         return_value={"hostname": "FortiGate", "version": "v7.0.0", "status": "ok"}
     )
 
+    mock_api.get_resource_usage = AsyncMock(
+        return_value={"results": [{"current": 12}], "status": "success"}
+    )
+    mock_api.get_web_ui_state = AsyncMock(
+        return_value={
+            "results": {
+                "utc_last_reboot": 1759000000000,
+                "snapshot_utc_time": 1759200000000,
+            },
+            "status": "success",
+        }
+    )
+
     mock_api.get_vdoms = AsyncMock(
-        return_value={"results": [{"name": "root", "enabled": True}]}
+        return_value={"results": [{"name": "root", "short-name": "root", "vcluster-id": 0}]}
     )
 
     mock_api.get_dns_settings = AsyncMock(

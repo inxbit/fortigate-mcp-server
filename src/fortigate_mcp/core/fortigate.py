@@ -184,9 +184,30 @@ class FortiGateAPI:
         except httpx.RequestError as e:
             duration_ms = (time.time() - start_time) * 1000
             log_api_call(self.logger, method, endpoint, None, duration_ms)
+            if isinstance(e, httpx.LocalProtocolError):
+                # h11 echoes an illegal header value, i.e. the Authorization
+                # header and its token: keep the text and its chain out
+                raise FortiGateAPIError(
+                    "Network error: invalid request header: check the device credentials",
+                    device_id=self.device_id,
+                ) from None
+            # A timeout stringifies to "": name its class instead
             raise FortiGateAPIError(
-                f"Network error: {str(e)}", device_id=self.device_id
+                f"Network error: {str(e) or type(e).__name__}", device_id=self.device_id
             )
+
+    async def check_connection(self) -> Optional[str]:
+        """Probe the device with one system status request.
+
+        Returns:
+            None if the device answered, otherwise the error text
+        """
+        try:
+            await self.get_system_status()
+            return None
+        except Exception as e:
+            self.logger.error(f"Connection test failed: {e}")
+            return str(e)
 
     async def test_connection(self) -> bool:
         """Test connection to FortiGate device.
@@ -194,12 +215,7 @@ class FortiGateAPI:
         Returns:
             True if connection successful, False otherwise
         """
-        try:
-            await self.get_system_status()
-            return True
-        except Exception as e:
-            self.logger.error(f"Connection test failed: {e}")
-            return False
+        return await self.check_connection() is None
 
     # System endpoints
     async def get_system_status(self, vdom: Optional[str] = None) -> Dict[str, Any]:
@@ -213,6 +229,21 @@ class FortiGateAPI:
     async def get_system_interface(self, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get system interface information."""
         return await self._make_request("GET", "monitor/system/interface", vdom=vdom)
+
+    async def get_resource_usage(
+        self, resource: str, vdom: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get current and 1-min usage of one resource (cpu, mem, session...)."""
+        return await self._make_request(
+            "GET",
+            "monitor/system/resource/usage",
+            params={"resource": resource, "interval": "1-min"},
+            vdom=vdom,
+        )
+
+    async def get_web_ui_state(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get the web UI state (utc_last_reboot and snapshot_utc_time give uptime)."""
+        return await self._make_request("GET", "monitor/web-ui/state", vdom=vdom)
 
     async def get_vdoms(self) -> Dict[str, Any]:
         """Get list of Virtual Domains."""
@@ -395,11 +426,20 @@ class FortiGateAPI:
         return await self._make_request("GET", "cmdb/system/interface", vdom=vdom)
 
     async def get_interface_status(
-        self, interface_name: str, vdom: Optional[str] = None
+        self, interface_name: Optional[str] = None, vdom: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Get specific interface status."""
+        """Get interface runtime status (link, speed, counters).
+
+        The filter must travel in ``params``: httpx replaces a query string
+        embedded in the endpoint with ``params``. FortiOS names it
+        ``interface_name``. No name, or "all" (kept for existing clients),
+        sends no filter and returns every monitored interface.
+        """
+        params = {"include_vlan": "true", "include_aggregate": "true"}
+        if interface_name and interface_name.lower() != "all":
+            params["interface_name"] = interface_name
         return await self._make_request(
-            "GET", f"monitor/system/interface?interface={interface_name}", vdom=vdom
+            "GET", "monitor/system/interface", params=params, vdom=vdom
         )
 
     # Firewall policy endpoints

@@ -16,7 +16,7 @@ The models provide:
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FortiGateDeviceConfig(BaseModel):
@@ -25,6 +25,10 @@ class FortiGateDeviceConfig(BaseModel):
     Defines the required and optional parameters for
     connecting to a specific FortiGate device.
     """
+
+    # A validation error must not echo a credential (the loader and the
+    # add_device tool pass its text on)
+    model_config = ConfigDict(hide_input_in_errors=True)
 
     host: str = Field(description="FortiGate IP address or hostname")
     port: int = Field(default=443, description="HTTPS port (default: 443)")
@@ -47,6 +51,21 @@ class FortiGateDeviceConfig(BaseModel):
         description="Path to a CA bundle PEM file for FortiGate TLS verification",
     )
     timeout: int = Field(default=30, description="Request timeout in seconds")
+
+    @field_validator("api_token")
+    @classmethod
+    def _token_is_a_header_word(cls, v: Optional[str]) -> Optional[str]:
+        """The token is sent as a header value: whitespace or a control
+        character fails every request (and h11 echoes the value), and httpx
+        encodes the value as ASCII (a non-ASCII letter fails the client)."""
+        if v is not None and any(
+            not c.isascii() or c.isspace() or not c.isprintable() for c in v
+        ):
+            raise ValueError(
+                "api_token must hold visible ASCII characters only"
+                " (no whitespace, control or non-ASCII characters)"
+            )
+        return v
 
 
 class FortiGateConfig(BaseModel):
@@ -134,6 +153,10 @@ class Config(BaseModel):
     Combines all configuration models into a single validated
     configuration object. Provides the complete server configuration.
     """
+
+    # The outermost model decides whether an error echoes its input: without
+    # this, the loader's error carries a rejected device token
+    model_config = ConfigDict(hide_input_in_errors=True)
 
     server: ServerConfig = Field(default_factory=ServerConfig)
     fortigate: FortiGateConfig = Field(description="FortiGate devices configuration")

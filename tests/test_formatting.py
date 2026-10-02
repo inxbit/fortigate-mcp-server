@@ -163,6 +163,37 @@ class TestFortiGateTemplates:
         assert "10.0.0.0/8" in result
         assert "192.168.1.1" in result
     
+    def test_routing_table_prints_ip_mask(self):
+        """monitor/router/ipv4 names the route prefix ip_mask"""
+        data = {
+            "results": [
+                {
+                    "ip_version": 4,
+                    "type": "static",
+                    "ip_mask": "0.0.0.0/0",
+                    "distance": 10,
+                    "metric": 0,
+                    "priority": 1,
+                    "gateway": "192.0.2.1",
+                    "interface": "wan1",
+                }
+            ]
+        }
+
+        result = FortiGateTemplates.routing_table(data)
+
+        assert "Route: 0.0.0.0/0" in result
+        assert "Route: N/A" not in result
+        assert "  Gateway: 192.0.2.1" in result
+
+    def test_routing_table_falls_back_to_dst(self):
+        """A route object carrying dst instead of ip_mask still renders its prefix"""
+        data = {"results": [{"dst": "10.0.0.0/8", "gateway": "192.0.2.1"}]}
+
+        result = FortiGateTemplates.routing_table(data)
+
+        assert "Route: 10.0.0.0/8" in result
+
     def test_interfaces_empty(self):
         """Empty interfaces template test"""
         data = {"results": []}
@@ -210,22 +241,24 @@ class TestFortiGateTemplates:
         assert "test_device" in result
     
     def test_vdoms_success(self):
-        """VDOMs template test"""
+        """VDOMs template test: cmdb/system/vdom objects have no enabled key"""
         data = {
             "results": [
                 {
                     "name": "root",
-                    "enabled": True,
-                    "description": "Root VDOM"
+                    "q_origin_key": "root",
+                    "short-name": "root",
+                    "vcluster-id": 0,
+                    "flag": 0,
                 }
             ]
         }
-        
+
         result = FortiGateTemplates.vdoms(data)
-        
-        assert "Virtual Domains" in result
-        assert "root" in result
-        assert "enabled" in result.lower()
+
+        assert result.startswith("Virtual Domains (VDOMs)\n\n")
+        assert "VDOM: root" in result.split("\n")
+        assert "enabled" not in result.lower()
 
 
 class TestFortiGateFormatters:

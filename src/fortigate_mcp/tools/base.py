@@ -162,6 +162,8 @@ class FortiGateTool:
             return FortiGateFormatters.format_json_response(data, titles[resource_type])
         elif resource_type == "interface_status":
             return FortiGateFormatters.format_json_response(data, "Interface Status")
+        elif resource_type == "resource_usage":
+            return FortiGateFormatters.format_json_response(data, "Resource Usage")
         elif resource_type == "static_route_detail":
             return FortiGateFormatters.format_json_response(data, "Static Route Detail")
         else:

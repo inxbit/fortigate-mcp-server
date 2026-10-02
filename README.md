@@ -144,6 +144,8 @@ Create a configuration file (e.g., `config/config.json`):
 }
 ```
 
+The `api_token` is sent as an `Authorization` header value, so a token with a character outside visible ASCII (whitespace, a control character or a non-ASCII letter; a trailing newline copied from a file is the usual cause) is rejected when the configuration loads or `add_device` runs; the error names the field, never the value.
+
 ### Run the Server
 
 **STDIO mode** (for direct MCP client integration):
@@ -206,7 +208,7 @@ When using a FortiGate certificate issued for a DNS name, configure the device `
 
 ## Available Tools
 
-### Device Management (6 tools)
+### Device Management (7 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -216,6 +218,7 @@ When using a FortiGate certificate issued for a DNS name, configure the device `
 | `add_device` | Register a new FortiGate device |
 | `remove_device` | Remove a registered device |
 | `discover_vdoms` | Discover Virtual Domains on a device |
+| `get_resource_usage` | CPU, memory and session usage plus uptime state (raw FortiOS replies as JSON) |
 
 ### Firewall Policy Management (5 tools)
 
@@ -284,7 +287,7 @@ DNS database, DNS server, and DHCP server writes use CMDB-backed FortiOS resourc
 | `get_static_route_detail` | Get detailed route information |
 | `get_routing_table` | Get the active routing table |
 | `list_interfaces` | List network interfaces |
-| `get_interface_status` | Get interface operational status |
+| `get_interface_status` | Get interface operational status (one interface, or every interface incl. VLAN/aggregate when `interface_name` is omitted or `all`) |
 
 ### Load-Balancing Management (15 tools)
 
@@ -312,7 +315,7 @@ DNS database, DNS server, and DHCP server writes use CMDB-backed FortiOS resourc
 |------|-------------|
 | `health_check` | Server health and device connectivity status |
 | `get_server_info` | Server version and configuration info |
-| `health` | HTTP server health and device connectivity status |
+| `health` | HTTP server health and device connectivity status (`device_errors` carries the reason a device did not answer; any such device makes the status `degraded`) |
 | `test_connection` | HTTP server aggregate FortiGate connection test |
 
 ## Write Operation Contract
