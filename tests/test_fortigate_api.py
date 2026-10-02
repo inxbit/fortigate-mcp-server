@@ -3,6 +3,7 @@ FortiGate API tests - async client with connection pooling.
 """
 
 import asyncio
+import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -313,7 +314,7 @@ class TestFortiGateAPIAsync:
             return_value={"results": []},
         ) as mock:
             await self.api.get_resource_usage("cpu")
-            await self.api.get_resource_usage("session", interval="10-min", vdom="root")
+            await self.api.get_resource_usage("session", vdom="root")
             mock.assert_any_call(
                 "GET",
                 "monitor/system/resource/usage",
@@ -323,9 +324,10 @@ class TestFortiGateAPIAsync:
             mock.assert_any_call(
                 "GET",
                 "monitor/system/resource/usage",
-                params={"resource": "session", "interval": "10-min"},
+                params={"resource": "session", "interval": "1-min"},
                 vdom="root",
             )
+        assert "interval" not in inspect.signature(self.api.get_resource_usage).parameters
 
     @pytest.mark.asyncio
     async def test_get_web_ui_state(self):

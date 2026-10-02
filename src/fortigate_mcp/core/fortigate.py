@@ -231,13 +231,13 @@ class FortiGateAPI:
         return await self._make_request("GET", "monitor/system/interface", vdom=vdom)
 
     async def get_resource_usage(
-        self, resource: str, interval: str = "1-min", vdom: Optional[str] = None
+        self, resource: str, vdom: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Get current and historical usage of one resource (cpu, mem, session...)."""
+        """Get current and 1-min usage of one resource (cpu, mem, session...)."""
         return await self._make_request(
             "GET",
             "monitor/system/resource/usage",
-            params={"resource": resource, "interval": interval},
+            params={"resource": resource, "interval": "1-min"},
             vdom=vdom,
         )
 
