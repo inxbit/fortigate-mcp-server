@@ -172,6 +172,32 @@ class TestDeviceTools:
         mock_fortigate_api.get_web_ui_state.assert_called_once_with(vdom=None)
 
     @pytest.mark.asyncio
+    async def test_get_resource_usage_keeps_only_uptime_state(self, mock_fortigate_api):
+        """The web UI state is cut to the uptime fields; its envelope stays."""
+        mock_fortigate_api.get_web_ui_state.return_value = {
+            "results": {
+                "utc_last_reboot": 1759000000000,
+                "snapshot_utc_time": 1759200000000,
+                "admin": {"name": "fortigate-mcp", "profile": {"name": "rw"}},
+                "ccsrf_token_cookie_name": "ccsrftoken_4433_x",
+                "admin_using_default_password": False,
+            },
+            "status": "success",
+            "serial": "FGT70FTK00000000",
+        }
+        self.fortigate_manager.devices["test_device"] = mock_fortigate_api
+
+        result = await self.device_tools.get_resource_usage("test_device")
+
+        state = _json_payload(result[0])["state"]
+        assert state["results"] == {
+            "utc_last_reboot": 1759000000000,
+            "snapshot_utc_time": 1759200000000,
+        }
+        assert state["status"] == "success"
+        assert state["serial"] == "FGT70FTK00000000"
+
+    @pytest.mark.asyncio
     async def test_get_resource_usage_error(self, mock_fortigate_api):
         """A failed request is the standard error response."""
         self.fortigate_manager.devices["test_device"] = mock_fortigate_api

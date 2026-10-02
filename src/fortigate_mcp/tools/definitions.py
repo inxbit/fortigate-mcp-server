@@ -108,7 +108,7 @@ Get CPU, memory and session usage and the uptime state of a FortiGate device.
 
 This tool queries monitor/system/resource/usage once per resource (cpu, mem,
 session; 1-min interval) and monitor/web-ui/state, and returns the FortiOS
-replies unchanged as JSON.
+replies as JSON. The web UI state keeps only its uptime fields.
 
 Parameters:
 - device_id: Identifier of the FortiGate device to query
@@ -116,7 +116,7 @@ Parameters:
 
 Returns:
 - usage.cpu, usage.mem, usage.session: current value and 1-min history
-- state: web UI state, incl. utc_last_reboot and snapshot_utc_time (uptime)
+- state: utc_last_reboot and snapshot_utc_time (ms; uptime is their difference)
 """
 
 # Firewall Policy Tool Descriptions
